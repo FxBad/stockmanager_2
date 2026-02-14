@@ -12,45 +12,181 @@ require_once __DIR__ . '/../config/database.php';
 
 
 $message = '';
+$allowedRoles = ['field', 'office', 'admin'];
 
-// Handle user status toggle
-if (isset($_POST['toggle_status'])) {
+function buildAlert($type, $text)
+{
+    return '<div class="alert ' . $type . '">' . htmlspecialchars($text) . '</div>';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Validate inputs
-        $userId = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
-        $currentStatus = isset($_POST['current_status']) ? $_POST['current_status'] : '';
+        $action = isset($_POST['action']) ? trim((string)$_POST['action']) : '';
 
-        if ($userId <= 0) {
-            throw new Exception('Invalid user ID');
+        if ($action === 'create_user') {
+            $username = isset($_POST['username']) ? trim((string)$_POST['username']) : '';
+            $fullName = isset($_POST['full_name']) ? trim((string)$_POST['full_name']) : '';
+            $email = isset($_POST['email']) ? trim((string)$_POST['email']) : '';
+            $password = isset($_POST['password']) ? (string)$_POST['password'] : '';
+            $confirmPassword = isset($_POST['confirm_password']) ? (string)$_POST['confirm_password'] : '';
+            $role = isset($_POST['role']) ? trim((string)$_POST['role']) : 'field';
+
+            if ($username === '' || !preg_match('/^[a-zA-Z0-9_]{3,30}$/', $username)) {
+                throw new Exception('Username harus 3-30 karakter (huruf, angka, underscore).');
+            }
+            if ($fullName === '' || strlen($fullName) > 100) {
+                throw new Exception('Nama lengkap tidak boleh kosong atau terlalu panjang.');
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception('Alamat email tidak valid.');
+            }
+            if (!in_array($role, $allowedRoles, true)) {
+                throw new Exception('Role pengguna tidak valid.');
+            }
+            if ($password === '' || strlen($password) < 6) {
+                throw new Exception('Password minimal 6 karakter.');
+            }
+            if ($password !== $confirmPassword) {
+                throw new Exception('Konfirmasi password tidak cocok.');
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username LIMIT 1');
+            $stmt->execute([':username' => $username]);
+            if ($stmt->fetch()) {
+                throw new Exception('Username sudah terdaftar.');
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
+            $stmt->execute([':email' => $email]);
+            if ($stmt->fetch()) {
+                throw new Exception('Email sudah digunakan.');
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO users (username, password, full_name, email, role, status) VALUES (:username, :password, :full_name, :email, :role, :status)');
+            $stmt->execute([
+                ':username' => $username,
+                ':password' => password_hash($password, PASSWORD_DEFAULT),
+                ':full_name' => $fullName,
+                ':email' => $email,
+                ':role' => $role,
+                ':status' => 'active',
+            ]);
+
+            $message = buildAlert('success', 'Pengguna berhasil ditambahkan.');
+        } elseif ($action === 'update_user') {
+            $userId = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
+            $username = isset($_POST['username']) ? trim((string)$_POST['username']) : '';
+            $fullName = isset($_POST['full_name']) ? trim((string)$_POST['full_name']) : '';
+            $email = isset($_POST['email']) ? trim((string)$_POST['email']) : '';
+            $password = isset($_POST['password']) ? (string)$_POST['password'] : '';
+            $confirmPassword = isset($_POST['confirm_password']) ? (string)$_POST['confirm_password'] : '';
+            $role = isset($_POST['role']) ? trim((string)$_POST['role']) : 'field';
+
+            if ($userId <= 0) {
+                throw new Exception('ID pengguna tidak valid.');
+            }
+            if ($userId === (int)$_SESSION['user_id']) {
+                throw new Exception('Tidak dapat mengedit akun Anda sendiri dari halaman ini.');
+            }
+            if ($username === '' || !preg_match('/^[a-zA-Z0-9_]{3,30}$/', $username)) {
+                throw new Exception('Username harus 3-30 karakter (huruf, angka, underscore).');
+            }
+            if ($fullName === '' || strlen($fullName) > 100) {
+                throw new Exception('Nama lengkap tidak boleh kosong atau terlalu panjang.');
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception('Alamat email tidak valid.');
+            }
+            if (!in_array($role, $allowedRoles, true)) {
+                throw new Exception('Role pengguna tidak valid.');
+            }
+            if ($password !== '') {
+                if (strlen($password) < 6) {
+                    throw new Exception('Password baru minimal 6 karakter.');
+                }
+                if ($password !== $confirmPassword) {
+                    throw new Exception('Konfirmasi password baru tidak cocok.');
+                }
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username AND id != :id LIMIT 1');
+            $stmt->execute([':username' => $username, ':id' => $userId]);
+            if ($stmt->fetch()) {
+                throw new Exception('Username sudah digunakan pengguna lain.');
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email AND id != :id LIMIT 1');
+            $stmt->execute([':email' => $email, ':id' => $userId]);
+            if ($stmt->fetch()) {
+                throw new Exception('Email sudah digunakan pengguna lain.');
+            }
+
+            if ($password !== '') {
+                $stmt = $pdo->prepare('UPDATE users SET username = :username, full_name = :full_name, email = :email, role = :role, password = :password WHERE id = :id');
+                $stmt->execute([
+                    ':username' => $username,
+                    ':full_name' => $fullName,
+                    ':email' => $email,
+                    ':role' => $role,
+                    ':password' => password_hash($password, PASSWORD_DEFAULT),
+                    ':id' => $userId,
+                ]);
+            } else {
+                $stmt = $pdo->prepare('UPDATE users SET username = :username, full_name = :full_name, email = :email, role = :role WHERE id = :id');
+                $stmt->execute([
+                    ':username' => $username,
+                    ':full_name' => $fullName,
+                    ':email' => $email,
+                    ':role' => $role,
+                    ':id' => $userId,
+                ]);
+            }
+
+            if ($stmt->rowCount() > 0) {
+                $message = buildAlert('success', 'Pengguna berhasil diperbarui.');
+            } else {
+                $message = buildAlert('error', 'Tidak ada perubahan data atau pengguna tidak ditemukan.');
+            }
+        } elseif ($action === 'toggle_status') {
+            $userId = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
+            $currentStatus = isset($_POST['current_status']) ? $_POST['current_status'] : '';
+
+            if ($userId <= 0) {
+                throw new Exception('Invalid user ID');
+            }
+
+            if ($userId === (int)$_SESSION['user_id']) {
+                throw new Exception('Tidak dapat mengubah status akun Anda sendiri.');
+            }
+
+            $stmtRole = $pdo->prepare('SELECT role FROM users WHERE id = ?');
+            $stmtRole->execute([$userId]);
+            $roleRow = $stmtRole->fetch(PDO::FETCH_ASSOC);
+            if (!$roleRow) {
+                throw new Exception('User tidak ditemukan.');
+            }
+            if ($roleRow['role'] === 'admin') {
+                throw new Exception('Tidak dapat mengubah status akun admin.');
+            }
+
+            $newStatus = $currentStatus === 'active' ? 'inactive' : 'active';
+
+            $stmt = $pdo->prepare("UPDATE users SET status = :status WHERE id = :id AND role != 'admin'");
+            $stmt->execute([':status' => $newStatus, ':id' => $userId]);
+
+            if ($stmt->rowCount() > 0) {
+                $message = buildAlert('success', 'Status pengguna berhasil diperbarui.');
+            } else {
+                $message = buildAlert('error', 'Pengguna tidak ditemukan atau status tidak berubah.');
+            }
+        } else {
+            throw new Exception('Aksi tidak dikenali.');
         }
-
-        // Prevent toggling your own account or any admin account
-        if ($userId === (int)$_SESSION['user_id']) {
-            throw new Exception('Tidak dapat mengubah status akun Anda sendiri.');
-        }
-
-        $stmtRole = $pdo->prepare('SELECT role FROM users WHERE id = ?');
-        $stmtRole->execute([$userId]);
-        $roleRow = $stmtRole->fetch(PDO::FETCH_ASSOC);
-        if (!$roleRow) {
-            throw new Exception('User tidak ditemukan.');
-        }
-        if ($roleRow['role'] === 'admin') {
-            throw new Exception('Tidak dapat mengubah status akun admin.');
-        }
-
-        $newStatus = $currentStatus === 'active' ? 'inactive' : 'active';
-
-        $stmt = $pdo->prepare("UPDATE users SET status = :status WHERE id = :id AND role != 'admin'");
-        $stmt->execute([':status' => $newStatus, ':id' => $userId]);
-
-        $message = "<script>showModal({title: 'Sukses', message: 'User status updated successfully!', type: 'success'});</script>";
     } catch (Exception $e) {
-        // Log server-side error (if writable)
         if (is_writable(__DIR__ . '/../logs')) {
             error_log('manage-users error: ' . $e->getMessage() . "\n", 3, __DIR__ . '/../logs/error.log');
         }
-        $message = "<script>showModal({title: 'Error', message: '" . addslashes(htmlspecialchars($e->getMessage())) . "', type: 'error'});</script>";
+        $message = buildAlert('error', $e->getMessage());
     }
 }
 
@@ -64,7 +200,7 @@ try {
     if (is_writable(__DIR__ . '/../logs')) {
         error_log('manage-users fetch error: ' . $e->getMessage() . "\n", 3, __DIR__ . '/../logs/error.log');
     }
-    $message = "<script>showModal({title: 'Error', message: 'Gagal memuat daftar pengguna.', type: 'error'});</script>";
+    $message = buildAlert('error', 'Gagal memuat daftar pengguna.');
 }
 ?>
 
@@ -80,6 +216,79 @@ try {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <style>
+        .users-header-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+
+        .btn-add-user {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 10px 14px;
+            background-color: var(--fern-green);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .btn-add-user:hover {
+            background-color: var(--hunter-green);
+        }
+
+        .user-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .user-modal-overlay.show {
+            display: flex;
+        }
+
+        .user-modal {
+            width: 100%;
+            max-width: 560px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+
+        .user-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .user-modal-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        .user-modal-close {
+            border: none;
+            background: transparent;
+            color: #666;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .user-modal-body {
+            padding: 16px;
+        }
+    </style>
 </head>
 
 <body>
@@ -94,13 +303,15 @@ try {
             <?php echo $message; ?>
         <?php endif; ?>
 
+        <div class="users-header-actions">
+            <button type="button" class="btn-add-user" onclick="openAddUserModal()">
+                <i class='bx bx-user-plus'></i> Tambah Pengguna
+            </button>
+        </div>
+
         <div class="table-container">
             <div class="table-header">
                 <h3>Pengguna Sistem</h3>
-                <a href="register.php" class="btn-add">
-                    <i class='bx bx-user-plus'></i>
-                    Tambah Pengguna
-                </a>
             </div>
 
             <table>
@@ -149,49 +360,177 @@ try {
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <form method="POST" class="action-form" onsubmit="return confirm('Apakah Anda yakin ingin mengubah status pengguna ini?');">
-                                    <input type="hidden" name="user_id" value="<?php echo $uid; ?>">
-                                    <input type="hidden" name="current_status" value="<?php echo $status; ?>">
-                                    <button type="submit" name="toggle_status" class="btn-toggle <?php echo $status; ?>">
-                                        <i class='bx bx-toggle-<?php echo $status === 'active' ? 'right' : 'left'; ?>'></i>
-                                        <?php echo $status === 'active' ? 'Nonaktifkan' : 'Aktifkan'; ?>
+                                <div class="actions-inline">
+                                    <button
+                                        type="button"
+                                        class="btn-edit"
+                                        data-user-id="<?php echo $uid; ?>"
+                                        data-username="<?php echo htmlspecialchars((string)$user['username'], ENT_QUOTES); ?>"
+                                        data-full-name="<?php echo htmlspecialchars((string)$user['full_name'], ENT_QUOTES); ?>"
+                                        data-email="<?php echo htmlspecialchars((string)$user['email'], ENT_QUOTES); ?>"
+                                        data-role="<?php echo htmlspecialchars((string)$user['role'], ENT_QUOTES); ?>"
+                                        onclick="openEditUserModal(this)">
+                                        <i class='bx bx-edit'></i>
                                     </button>
-                                </form>
+                                    <form method="POST" class="action-form" onsubmit="return confirm('Apakah Anda yakin ingin mengubah status pengguna ini?');">
+                                        <input type="hidden" name="action" value="toggle_status">
+                                        <input type="hidden" name="user_id" value="<?php echo $uid; ?>">
+                                        <input type="hidden" name="current_status" value="<?php echo $status; ?>">
+                                        <button type="submit" class="btn-toggle <?php echo $status; ?>">
+                                            <i class='bx bx-toggle-<?php echo $status === 'active' ? 'right' : 'left'; ?>'></i>
+                                            <?php echo $status === 'active' ? 'Nonaktifkan' : 'Aktifkan'; ?>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
+
+        <div class="user-modal-overlay" id="add-user-modal" onclick="closeUserModalOnBackdrop(event, 'add-user-modal')">
+            <div class="user-modal" role="dialog" aria-modal="true" aria-labelledby="add-user-modal-title">
+                <div class="user-modal-header">
+                    <h3 id="add-user-modal-title">Tambah Pengguna</h3>
+                    <button type="button" class="user-modal-close" onclick="closeUserModal('add-user-modal')">&times;</button>
+                </div>
+                <div class="user-modal-body">
+                    <form method="POST" class="add-form" id="add-user-form">
+                        <input type="hidden" name="action" value="create_user">
+                        <div class="form-group">
+                            <label for="add_username">Username</label>
+                            <input type="text" id="add_username" name="username" maxlength="30" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_full_name">Nama Lengkap</label>
+                            <input type="text" id="add_full_name" name="full_name" maxlength="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_email">Email</label>
+                            <input type="email" id="add_email" name="email" maxlength="150" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_role">Role</label>
+                            <select id="add_role" name="role" required>
+                                <option value="field">Field</option>
+                                <option value="office">Office</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_password">Password</label>
+                            <input type="password" id="add_password" name="password" minlength="6" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_confirm_password">Konfirmasi Password</label>
+                            <input type="password" id="add_confirm_password" name="confirm_password" minlength="6" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-submit">Simpan Pengguna</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="user-modal-overlay" id="edit-user-modal" onclick="closeUserModalOnBackdrop(event, 'edit-user-modal')">
+            <div class="user-modal" role="dialog" aria-modal="true" aria-labelledby="edit-user-modal-title">
+                <div class="user-modal-header">
+                    <h3 id="edit-user-modal-title">Edit Pengguna</h3>
+                    <button type="button" class="user-modal-close" onclick="closeUserModal('edit-user-modal')">&times;</button>
+                </div>
+                <div class="user-modal-body">
+                    <form method="POST" class="add-form" id="edit-user-form">
+                        <input type="hidden" name="action" value="update_user">
+                        <input type="hidden" name="user_id" id="edit_user_id" value="">
+                        <div class="form-group">
+                            <label for="edit_username">Username</label>
+                            <input type="text" id="edit_username" name="username" maxlength="30" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_full_name">Nama Lengkap</label>
+                            <input type="text" id="edit_full_name" name="full_name" maxlength="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_email">Email</label>
+                            <input type="email" id="edit_email" name="email" maxlength="150" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_role">Role</label>
+                            <select id="edit_role" name="role" required>
+                                <option value="field">Field</option>
+                                <option value="office">Office</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_password">Password Baru (opsional)</label>
+                            <input type="password" id="edit_password" name="password" minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_confirm_password">Konfirmasi Password Baru</label>
+                            <input type="password" id="edit_confirm_password" name="confirm_password" minlength="6">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-submit">Update Pengguna</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </main>
     <script src="script.js?<?php echo getVersion(); ?>"></script>
     <script>
-        // showModal(title, message, type) - type: 'success', 'error', etc.
-        function showModal(title, message, type = 'info') {
-            // Remove existing modal if present
-            const oldModal = document.getElementById('custom-modal');
-            if (oldModal) oldModal.remove();
-            const modal = document.createElement('div');
-            modal.id = 'custom-modal';
-            modal.style.position = 'fixed';
-            modal.style.top = 0;
-            modal.style.left = 0;
-            modal.style.width = '100vw';
-            modal.style.height = '100vh';
-            modal.style.background = 'rgba(0,0,0,0.3)';
-            modal.style.display = 'flex';
-            modal.style.alignItems = 'center';
-            modal.style.justifyContent = 'center';
-            modal.style.zIndex = 9999;
-            modal.innerHTML = `
-            <div style="background:#fff;min-width:320px;max-width:90vw;padding:24px 20px 16px 20px;border-radius:8px;box-shadow:0 2px 16px rgba(0,0,0,0.15);text-align:center;">
-                <h2 style="margin-top:0;color:${type==='success'?'#2e7d32':type==='error'?'#c62828':'#333'};font-size:1.3em;">${title}</h2>
-                <div style="margin:12px 0 18px 0;font-size:1.1em;">${message}</div>
-                <button onclick="document.getElementById('custom-modal').remove();" style="padding:7px 22px;font-size:1em;border:none;border-radius:4px;background:${type==='success'?'#43a047':type==='error'?'#e53935':'#1976d2'};color:#fff;cursor:pointer;">Tutup</button>
-            </div>
-        `;
-            document.body.appendChild(modal);
+        function openAddUserModal() {
+            const form = document.getElementById('add-user-form');
+            if (form) {
+                form.reset();
+            }
+            const modal = document.getElementById('add-user-modal');
+            if (modal) {
+                modal.classList.add('show');
+            }
         }
+
+        function openEditUserModal(button) {
+            if (!button) {
+                return;
+            }
+
+            document.getElementById('edit_user_id').value = button.dataset.userId || '';
+            document.getElementById('edit_username').value = button.dataset.username || '';
+            document.getElementById('edit_full_name').value = button.dataset.fullName || '';
+            document.getElementById('edit_email').value = button.dataset.email || '';
+            document.getElementById('edit_role').value = button.dataset.role || 'field';
+            document.getElementById('edit_password').value = '';
+            document.getElementById('edit_confirm_password').value = '';
+
+            const modal = document.getElementById('edit-user-modal');
+            if (modal) {
+                modal.classList.add('show');
+            }
+        }
+
+        function closeUserModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        function closeUserModalOnBackdrop(event, modalId) {
+            if (event.target && event.target.id === modalId) {
+                closeUserModal(modalId);
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeUserModal('add-user-modal');
+                closeUserModal('edit-user-modal');
+            }
+        });
     </script>
 </body>
 
