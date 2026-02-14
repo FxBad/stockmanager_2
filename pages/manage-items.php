@@ -421,22 +421,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             );
 
             $histCols = [
-                'item_id', 'item_name', 'category', 'action',
-                'field_stock_old', 'field_stock_new',
-                'status_old', 'status_new',
-                'total_stock_old', 'total_stock_new',
-                'days_coverage_old', 'days_coverage_new',
-                'unit', 'unit_conversion', 'daily_consumption',
-                'min_days_coverage', 'changed_by', 'note'
+                'item_id',
+                'item_name',
+                'category',
+                'action',
+                'field_stock_old',
+                'field_stock_new',
+                'status_old',
+                'status_new',
+                'total_stock_old',
+                'total_stock_new',
+                'days_coverage_old',
+                'days_coverage_new',
+                'unit',
+                'unit_conversion',
+                'daily_consumption',
+                'min_days_coverage',
+                'changed_by',
+                'note'
             ];
             $histVals = [
-                ':item_id', ':item_name', ':category', ':action',
-                ':field_stock_old', ':field_stock_new',
-                ':status_old', ':status_new',
-                ':total_stock_old', ':total_stock_new',
-                ':days_coverage_old', ':days_coverage_new',
-                ':unit', ':unit_conversion', ':daily_consumption',
-                ':min_days_coverage', ':changed_by', ':note'
+                ':item_id',
+                ':item_name',
+                ':category',
+                ':action',
+                ':field_stock_old',
+                ':field_stock_new',
+                ':status_old',
+                ':status_new',
+                ':total_stock_old',
+                ':total_stock_new',
+                ':days_coverage_old',
+                ':days_coverage_new',
+                ':unit',
+                ':unit_conversion',
+                ':daily_consumption',
+                ':min_days_coverage',
+                ':changed_by',
+                ':note'
             ];
 
             if ($histHasWarehouseOld) {
