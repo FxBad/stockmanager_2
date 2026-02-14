@@ -3371,6 +3371,79 @@ table th i {
 	color: #f39c12;
 }
 
+.items-header-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: 12px;
+}
+
+.btn-add-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border: none;
+	border-radius: 6px;
+	cursor: pointer;
+	padding: 10px 14px;
+	background-color: var(--fern-green);
+	color: #fff;
+	font-weight: 600;
+}
+
+.btn-add-item:hover {
+	background-color: var(--hunter-green);
+}
+
+.item-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.4);
+	z-index: 9999;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+}
+
+.item-modal-overlay.show {
+	display: flex;
+}
+
+.item-modal {
+	width: 100%;
+	max-width: 640px;
+	max-height: 90vh;
+	overflow-y: auto;
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: var(--box-shadow);
+}
+
+.item-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 18px;
+	border-bottom: 1px solid #eee;
+}
+
+.item-modal-header h3 {
+	margin: 0;
+	font-size: 1.05rem;
+}
+
+.item-modal-close {
+	border: none;
+	background: transparent;
+	color: #666;
+	font-size: 1.2rem;
+	cursor: pointer;
+}
+
+.item-modal-body {
+	padding: 16px;
+}
+
 /* Mobile optimization for modal */
 @media screen and (max-width: 420px) {
 	.custom-modal {
