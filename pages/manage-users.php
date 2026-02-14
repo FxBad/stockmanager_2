@@ -13,6 +13,20 @@ require_once __DIR__ . '/../config/database.php';
 
 $message = '';
 $allowedRoles = ['field', 'office', 'admin'];
+$modalToOpen = '';
+$addUserState = [
+    'username' => '',
+    'full_name' => '',
+    'email' => '',
+    'role' => 'field',
+];
+$editUserState = [
+    'user_id' => '',
+    'username' => '',
+    'full_name' => '',
+    'email' => '',
+    'role' => 'field',
+];
 
 function buildAlert($type, $text)
 {
@@ -20,9 +34,9 @@ function buildAlert($type, $text)
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        $action = isset($_POST['action']) ? trim((string)$_POST['action']) : '';
+    $action = isset($_POST['action']) ? trim((string)$_POST['action']) : '';
 
+    try {
         if ($action === 'create_user') {
             $username = isset($_POST['username']) ? trim((string)$_POST['username']) : '';
             $fullName = isset($_POST['full_name']) ? trim((string)$_POST['full_name']) : '';
@@ -30,6 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $password = isset($_POST['password']) ? (string)$_POST['password'] : '';
             $confirmPassword = isset($_POST['confirm_password']) ? (string)$_POST['confirm_password'] : '';
             $role = isset($_POST['role']) ? trim((string)$_POST['role']) : 'field';
+
+            $addUserState['username'] = $username;
+            $addUserState['full_name'] = $fullName;
+            $addUserState['email'] = $email;
+            $addUserState['role'] = $role;
 
             if ($username === '' || !preg_match('/^[a-zA-Z0-9_]{3,30}$/', $username)) {
                 throw new Exception('Username harus 3-30 karakter (huruf, angka, underscore).');
@@ -72,6 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':status' => 'active',
             ]);
 
+            $addUserState = [
+                'username' => '',
+                'full_name' => '',
+                'email' => '',
+                'role' => 'field',
+            ];
+
             $message = buildAlert('success', 'Pengguna berhasil ditambahkan.');
         } elseif ($action === 'update_user') {
             $userId = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
@@ -81,6 +107,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $password = isset($_POST['password']) ? (string)$_POST['password'] : '';
             $confirmPassword = isset($_POST['confirm_password']) ? (string)$_POST['confirm_password'] : '';
             $role = isset($_POST['role']) ? trim((string)$_POST['role']) : 'field';
+
+            $editUserState['user_id'] = (string)$userId;
+            $editUserState['username'] = $username;
+            $editUserState['full_name'] = $fullName;
+            $editUserState['email'] = $email;
+            $editUserState['role'] = $role;
 
             if ($userId <= 0) {
                 throw new Exception('ID pengguna tidak valid.');
@@ -143,6 +175,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($stmt->rowCount() > 0) {
+                $editUserState = [
+                    'user_id' => '',
+                    'username' => '',
+                    'full_name' => '',
+                    'email' => '',
+                    'role' => 'field',
+                ];
                 $message = buildAlert('success', 'Pengguna berhasil diperbarui.');
             } else {
                 $message = buildAlert('error', 'Tidak ada perubahan data atau pengguna tidak ditemukan.');
@@ -183,6 +222,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Aksi tidak dikenali.');
         }
     } catch (Exception $e) {
+        if ($action === 'create_user') {
+            $modalToOpen = 'add-user-modal';
+        } elseif ($action === 'update_user') {
+            $modalToOpen = 'edit-user-modal';
+        }
+
         if (is_writable(__DIR__ . '/../logs')) {
             error_log('manage-users error: ' . $e->getMessage() . "\n", 3, __DIR__ . '/../logs/error.log');
         }
@@ -400,22 +445,22 @@ try {
                         <input type="hidden" name="action" value="create_user">
                         <div class="form-group">
                             <label for="add_username">Username</label>
-                            <input type="text" id="add_username" name="username" maxlength="30" required>
+                            <input type="text" id="add_username" name="username" maxlength="30" value="<?php echo htmlspecialchars((string)$addUserState['username']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="add_full_name">Nama Lengkap</label>
-                            <input type="text" id="add_full_name" name="full_name" maxlength="100" required>
+                            <input type="text" id="add_full_name" name="full_name" maxlength="100" value="<?php echo htmlspecialchars((string)$addUserState['full_name']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="add_email">Email</label>
-                            <input type="email" id="add_email" name="email" maxlength="150" required>
+                            <input type="email" id="add_email" name="email" maxlength="150" value="<?php echo htmlspecialchars((string)$addUserState['email']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="add_role">Role</label>
                             <select id="add_role" name="role" required>
-                                <option value="field">Field</option>
-                                <option value="office">Office</option>
-                                <option value="admin">Admin</option>
+                                <option value="field" <?php echo $addUserState['role'] === 'field' ? 'selected' : ''; ?>>Field</option>
+                                <option value="office" <?php echo $addUserState['role'] === 'office' ? 'selected' : ''; ?>>Office</option>
+                                <option value="admin" <?php echo $addUserState['role'] === 'admin' ? 'selected' : ''; ?>>Admin</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -443,25 +488,25 @@ try {
                 <div class="user-modal-body">
                     <form method="POST" class="add-form" id="edit-user-form">
                         <input type="hidden" name="action" value="update_user">
-                        <input type="hidden" name="user_id" id="edit_user_id" value="">
+                        <input type="hidden" name="user_id" id="edit_user_id" value="<?php echo htmlspecialchars((string)$editUserState['user_id']); ?>">
                         <div class="form-group">
                             <label for="edit_username">Username</label>
-                            <input type="text" id="edit_username" name="username" maxlength="30" required>
+                            <input type="text" id="edit_username" name="username" maxlength="30" value="<?php echo htmlspecialchars((string)$editUserState['username']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="edit_full_name">Nama Lengkap</label>
-                            <input type="text" id="edit_full_name" name="full_name" maxlength="100" required>
+                            <input type="text" id="edit_full_name" name="full_name" maxlength="100" value="<?php echo htmlspecialchars((string)$editUserState['full_name']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="edit_email">Email</label>
-                            <input type="email" id="edit_email" name="email" maxlength="150" required>
+                            <input type="email" id="edit_email" name="email" maxlength="150" value="<?php echo htmlspecialchars((string)$editUserState['email']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="edit_role">Role</label>
                             <select id="edit_role" name="role" required>
-                                <option value="field">Field</option>
-                                <option value="office">Office</option>
-                                <option value="admin">Admin</option>
+                                <option value="field" <?php echo $editUserState['role'] === 'field' ? 'selected' : ''; ?>>Field</option>
+                                <option value="office" <?php echo $editUserState['role'] === 'office' ? 'selected' : ''; ?>>Office</option>
+                                <option value="admin" <?php echo $editUserState['role'] === 'admin' ? 'selected' : ''; ?>>Admin</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -531,6 +576,18 @@ try {
                 closeUserModal('edit-user-modal');
             }
         });
+
+        (function() {
+            const modalToOpen = <?php echo json_encode($modalToOpen); ?>;
+            if (modalToOpen === 'add-user-modal' || modalToOpen === 'edit-user-modal') {
+                closeUserModal('add-user-modal');
+                closeUserModal('edit-user-modal');
+                const modal = document.getElementById(modalToOpen);
+                if (modal) {
+                    modal.classList.add('show');
+                }
+            }
+        })();
     </script>
 </body>
 

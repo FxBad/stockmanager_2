@@ -11,6 +11,18 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../functions.php';
 
 $message = '';
+$modalToOpen = '';
+$addFormState = [
+    'value' => '',
+    'label' => '',
+    'display_order' => 0,
+];
+$editFormState = [
+    'unit_id' => '',
+    'value' => '',
+    'label' => '',
+    'display_order' => 0,
+];
 
 function normalizeUnitValue($value)
 {
@@ -20,14 +32,25 @@ function normalizeUnitValue($value)
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        $action = isset($_POST['action']) ? trim((string)$_POST['action']) : '';
+    $action = isset($_POST['action']) ? trim((string)$_POST['action']) : '';
 
+    try {
         if ($action === 'create_unit' || $action === 'update_unit') {
             $unitId = isset($_POST['unit_id']) ? (int)$_POST['unit_id'] : 0;
             $rawValue = isset($_POST['value']) ? $_POST['value'] : '';
             $label = isset($_POST['label']) ? trim((string)$_POST['label']) : '';
             $displayOrder = isset($_POST['display_order']) ? (int)$_POST['display_order'] : 0;
+
+            if ($action === 'create_unit') {
+                $addFormState['value'] = trim((string)$rawValue);
+                $addFormState['label'] = $label;
+                $addFormState['display_order'] = $displayOrder;
+            } else {
+                $editFormState['unit_id'] = (string)$unitId;
+                $editFormState['value'] = trim((string)$rawValue);
+                $editFormState['label'] = $label;
+                $editFormState['display_order'] = $displayOrder;
+            }
 
             $value = normalizeUnitValue($rawValue);
 
@@ -56,6 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':label' => $label,
                     ':display_order' => $displayOrder,
                 ]);
+                $addFormState = [
+                    'value' => '',
+                    'label' => '',
+                    'display_order' => 0,
+                ];
                 $message = '<div class="alert success">Satuan berhasil ditambahkan.</div>';
             } else {
                 if ($unitId <= 0) {
@@ -71,6 +99,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 if ($stmt->rowCount() > 0) {
+                    $editFormState = [
+                        'unit_id' => '',
+                        'value' => '',
+                        'label' => '',
+                        'display_order' => 0,
+                    ];
                     $message = '<div class="alert success">Satuan berhasil diperbarui.</div>';
                 } else {
                     $message = '<div class="alert error">Tidak ada perubahan data atau satuan tidak ditemukan.</div>';
@@ -100,12 +134,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Aksi tidak dikenali.');
         }
     } catch (PDOException $e) {
+        if ($action === 'create_unit') {
+            $modalToOpen = 'add-unit-modal';
+        } elseif ($action === 'update_unit') {
+            $modalToOpen = 'edit-unit-modal';
+        }
+
         if ((int)$e->getCode() === 23000) {
             $message = '<div class="alert error">Value satuan sudah digunakan. Gunakan value yang berbeda.</div>';
         } else {
             $message = '<div class="alert error">Kesalahan database: ' . htmlspecialchars($e->getMessage()) . '</div>';
         }
     } catch (Exception $e) {
+        if ($action === 'create_unit') {
+            $modalToOpen = 'add-unit-modal';
+        } elseif ($action === 'update_unit') {
+            $modalToOpen = 'edit-unit-modal';
+        }
+
         $message = '<div class="alert error">' . htmlspecialchars($e->getMessage()) . '</div>';
     }
 }
@@ -302,15 +348,15 @@ try {
                         <input type="hidden" name="action" value="create_unit">
                         <div class="form-group">
                             <label for="add_value">Value (unik)</label>
-                            <input type="text" id="add_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" placeholder="contoh: drum" required>
+                            <input type="text" id="add_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" placeholder="contoh: drum" value="<?php echo htmlspecialchars((string)$addFormState['value']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="add_label">Label</label>
-                            <input type="text" id="add_label" name="label" maxlength="100" placeholder="contoh: Drum" required>
+                            <input type="text" id="add_label" name="label" maxlength="100" placeholder="contoh: Drum" value="<?php echo htmlspecialchars((string)$addFormState['label']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="add_display_order">Urutan Tampil</label>
-                            <input type="number" id="add_display_order" name="display_order" min="0" max="9999" value="0" required>
+                            <input type="number" id="add_display_order" name="display_order" min="0" max="9999" value="<?php echo (int)$addFormState['display_order']; ?>" required>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn-submit">Simpan Satuan</button>
@@ -329,18 +375,18 @@ try {
                 <div class="unit-modal-body">
                     <form method="POST" class="add-form" id="edit-unit-form">
                         <input type="hidden" name="action" value="update_unit">
-                        <input type="hidden" id="edit_unit_id" name="unit_id" value="">
+                        <input type="hidden" id="edit_unit_id" name="unit_id" value="<?php echo htmlspecialchars((string)$editFormState['unit_id']); ?>">
                         <div class="form-group">
                             <label for="edit_value">Value (unik)</label>
-                            <input type="text" id="edit_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" required>
+                            <input type="text" id="edit_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" value="<?php echo htmlspecialchars((string)$editFormState['value']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="edit_label">Label</label>
-                            <input type="text" id="edit_label" name="label" maxlength="100" required>
+                            <input type="text" id="edit_label" name="label" maxlength="100" value="<?php echo htmlspecialchars((string)$editFormState['label']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="edit_display_order">Urutan Tampil</label>
-                            <input type="number" id="edit_display_order" name="display_order" min="0" max="9999" required>
+                            <input type="number" id="edit_display_order" name="display_order" min="0" max="9999" value="<?php echo (int)$editFormState['display_order']; ?>" required>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn-submit">Update Satuan</button>
@@ -404,6 +450,18 @@ try {
                 closeUnitModal('edit-unit-modal');
             }
         });
+
+        (function() {
+            const modalToOpen = <?php echo json_encode($modalToOpen); ?>;
+            if (modalToOpen === 'add-unit-modal' || modalToOpen === 'edit-unit-modal') {
+                closeUnitModal('add-unit-modal');
+                closeUnitModal('edit-unit-modal');
+                const modal = document.getElementById(modalToOpen);
+                if (modal) {
+                    modal.classList.add('show');
+                }
+            }
+        })();
     </script>
 </body>
 
