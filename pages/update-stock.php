@@ -18,6 +18,7 @@ $currentRole = currentUserRole();
 $isFieldUser = ($currentRole === 'field');
 $has_level_flag_column = db_has_column('items', 'has_level');
 $has_level_flag_select = $has_level_flag_column ? ', i.has_level' : '';
+$categories = getItemCategories();
 
 // Fetch all active items (only needed columns) with error handling
 try {
@@ -27,13 +28,8 @@ try {
                             WHERE " . activeItemsWhereSql('i') . "
                             ORDER BY i.name");
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Fetch distinct categories for filter
-    $catStmt = $pdo->query("SELECT DISTINCT category FROM items WHERE " . activeItemsWhereSql() . " ORDER BY category");
-    $categories = $catStmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (Exception $e) {
     $items = [];
-    $categories = [];
     $message = '<div class="alert error">DB error: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
 

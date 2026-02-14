@@ -181,12 +181,10 @@ try {
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Get categories for filter
-    $categories = $pdo->query("SELECT DISTINCT category FROM items WHERE " . activeItemsWhereSql() . " ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
+    $categories = $itemCategories;
 } catch (Exception $e) {
     $items = [];
-    $categories = [];
+    $categories = $itemCategories;
     $message = '<div class="alert error">DB error: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
 ?>

@@ -284,6 +284,8 @@ function validateItemInput(array $normalized, array $schema)
     }
     if ($normalized['category'] === '') {
         $errors[] = 'Kategori harus diisi.';
+    } elseif (!isItemCategoryValid($normalized['category'])) {
+        $errors[] = 'Kategori tidak terdaftar pada Master Data kategori.';
     }
     if ($normalized['unit'] === '') {
         $errors[] = 'Satuan harus dipilih.';
@@ -840,6 +842,18 @@ function db_has_column($table, $column)
     }
 }
 
+function db_has_table($table)
+{
+    if (!isset($GLOBALS['pdo']) || !$GLOBALS['pdo'] instanceof PDO) return false;
+    try {
+        $stmt = $GLOBALS['pdo']->prepare('SHOW TABLES LIKE ?');
+        $stmt->execute([$table]);
+        return (bool)$stmt->fetch(PDO::FETCH_NUM);
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
 // Soft-delete helpers for items table
 function itemsSoftDeleteEnabled()
 {
@@ -885,11 +899,11 @@ function getItemCategories()
     if (!isset($GLOBALS['pdo']) || !$GLOBALS['pdo'] instanceof PDO) return [];
 
     try {
-        $sql = "SELECT DISTINCT category FROM items WHERE category IS NOT NULL AND category != ''";
-        if (itemsSoftDeleteEnabled()) {
-            $sql .= " AND " . activeItemsWhereSql();
+        if (!db_has_table('item_categories')) {
+            return [];
         }
-        $sql .= " ORDER BY category";
+
+        $sql = "SELECT name FROM item_categories WHERE is_active = 1 ORDER BY display_order ASC, name ASC";
 
         $stmt = $GLOBALS['pdo']->prepare($sql);
         $stmt->execute();
@@ -906,5 +920,29 @@ function getItemCategories()
         }));
     } catch (Exception $e) {
         return [];
+    }
+}
+
+function isItemCategoryValid($categoryName)
+{
+    $categoryName = trim((string)$categoryName);
+    if ($categoryName === '') {
+        return false;
+    }
+
+    if (!isset($GLOBALS['pdo']) || !$GLOBALS['pdo'] instanceof PDO) {
+        return false;
+    }
+
+    if (!db_has_table('item_categories')) {
+        return false;
+    }
+
+    try {
+        $stmt = $GLOBALS['pdo']->prepare('SELECT id FROM item_categories WHERE name = :name AND is_active = 1 LIMIT 1');
+        $stmt->execute([':name' => $categoryName]);
+        return (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return false;
     }
 }

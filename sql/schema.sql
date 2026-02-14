@@ -67,6 +67,30 @@ CREATE TABLE IF NOT EXISTS `items` (
 
 -- Data exporting was unselected.
 
+-- Dumping structure for table stockmanager_test.item_categories
+CREATE TABLE IF NOT EXISTS `item_categories` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `display_order` int(11) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_item_categories_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `item_categories` (`name`, `display_order`, `is_active`)
+SELECT * FROM (
+  SELECT 'Chemical' AS name, 10 AS display_order, 1 AS is_active
+  UNION ALL SELECT 'Lube Oil', 20, 1
+  UNION ALL SELECT 'Toothbelts', 30, 1
+) AS seed
+WHERE NOT EXISTS (
+  SELECT 1 FROM `item_categories` c WHERE c.name = seed.name
+);
+
+-- Data exporting was unselected.
+
 -- Dumping structure for table stockmanager_test.item_stock_history
 CREATE TABLE IF NOT EXISTS `item_stock_history` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,

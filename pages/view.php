@@ -10,6 +10,8 @@ if (!isset($_SESSION['user_id'])) {
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../functions.php';
 
+$categories = getItemCategories();
+
 // Initialize filters
 $category = isset($_GET['category']) ? $_GET['category'] : '';
 $status = isset($_GET['status']) ? $_GET['status'] : '';
@@ -69,13 +71,9 @@ try {
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Get unique categories for filter
-    $categories = $pdo->query("SELECT DISTINCT category FROM items WHERE " . activeItemsWhereSql() . " ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
 } catch (Exception $e) {
     // On error, fallback to empty results and categories
     $items = [];
-    $categories = [];
 }
 
 // Show warehouse stock and daily consumption only to office and admin
