@@ -41,7 +41,7 @@ foreach ($items as $it) {
 
 // Cache column existence checks to avoid repeated metadata queries
 $has_level_column = db_has_column('items', 'level');
-$has_history_level = db_has_column('item_stock_history', 'level');
+$schemaFlags = itemSchemaFlags();
 
 // Handle form submission
 // Allow field, office and admin to access update stock
@@ -172,22 +172,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'total' => $fieldStock
             ];
 
-            // Insert history record for this change
-            // Include level in history if column exists
-            if ($has_history_level) {
-                $histSql = 'INSERT INTO item_stock_history
-                    (item_id, item_name, category, action, field_stock_old, field_stock_new, warehouse_stock_old, warehouse_stock_new, status_old, status_new, total_stock_old, total_stock_new, days_coverage_old, days_coverage_new, unit, unit_conversion, daily_consumption, level, min_days_coverage, changed_by, note)
-                    VALUES
-                    (:item_id, :item_name, :category, :action, :field_stock_old, :field_stock_new, :warehouse_stock_old, :warehouse_stock_new, :status_old, :status_new, :total_stock_old, :total_stock_new, :days_coverage_old, :days_coverage_new, :unit, :unit_conversion, :daily_consumption, :level, :min_days_coverage, :changed_by, :note)';
-            } else {
-                $histSql = 'INSERT INTO item_stock_history
-                    (item_id, item_name, category, action, field_stock_old, field_stock_new, warehouse_stock_old, warehouse_stock_new, status_old, status_new, total_stock_old, total_stock_new, days_coverage_old, days_coverage_new, unit, unit_conversion, daily_consumption, min_days_coverage, changed_by, note)
-                    VALUES
-                    (:item_id, :item_name, :category, :action, :field_stock_old, :field_stock_new, :warehouse_stock_old, :warehouse_stock_new, :status_old, :status_new, :total_stock_old, :total_stock_new, :days_coverage_old, :days_coverage_new, :unit, :unit_conversion, :daily_consumption, :min_days_coverage, :changed_by, :note)';
-            }
-
-            $histStmt = $pdo->prepare($histSql);
-
             $totalOld = ($orig['field_stock']) * (float)$orig['unit_conversion'];
             $totalNew = ($fieldStock) * (float)$orig['unit_conversion'];
             $daysOld = calculateDaysCoverage(
@@ -226,35 +210,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1
             ]);
 
-            $histParams = [
-                ':item_id' => $itemId,
-                ':item_name' => $orig['name'],
-                ':category' => $orig['category'],
-                ':action' => 'update',
-                ':field_stock_old' => $orig['field_stock'],
-                ':field_stock_new' => $fieldStock,
-                ':warehouse_stock_old' => 0,
-                ':warehouse_stock_new' => 0,
-                ':status_old' => $orig['status'],
-                ':status_new' => $status,
-                ':total_stock_old' => $totalOld,
-                ':total_stock_new' => $totalNew,
-                ':days_coverage_old' => $daysOld,
-                ':days_coverage_new' => $daysNew,
-                ':unit' => (isset($orig['unit']) && $orig['unit'] !== null ? $orig['unit'] : ''),
-                ':unit_conversion' => $orig['unit_conversion'],
-                ':daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $orig['daily_consumption'],
-                ':min_days_coverage' => $orig['min_days_coverage'],
-                ':changed_by' => $_SESSION['user_id'],
-                ':note' => 'bulk stock update (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')'
-            ];
-
-            if ($has_history_level) {
-                // Prefer level from POST (if provided), else original
-                $histParams[':level'] = ($levelValue !== null) ? $levelValue : (isset($orig['level']) ? $orig['level'] : null);
-            }
-
-            $histStmt->execute($histParams);
+            $historyInsert = buildItemHistoryInsert($schemaFlags, [
+                'item_id' => $itemId,
+                'item_name' => $orig['name'],
+                'category' => $orig['category'],
+                'action' => 'update',
+                'field_stock_old' => $orig['field_stock'],
+                'field_stock_new' => $fieldStock,
+                'warehouse_stock_old' => 0,
+                'warehouse_stock_new' => 0,
+                'status_old' => $orig['status'],
+                'status_new' => $status,
+                'total_stock_old' => $totalOld,
+                'total_stock_new' => $totalNew,
+                'days_coverage_old' => $daysOld,
+                'days_coverage_new' => $daysNew,
+                'unit' => (isset($orig['unit']) && $orig['unit'] !== null ? $orig['unit'] : ''),
+                'unit_conversion' => $orig['unit_conversion'],
+                'daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $orig['daily_consumption'],
+                'level' => ($levelValue !== null) ? $levelValue : (isset($orig['level']) ? $orig['level'] : null),
+                'min_days_coverage' => $orig['min_days_coverage'],
+                'changed_by' => $_SESSION['user_id'],
+                'note' => 'bulk stock update (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')'
+            ]);
+            $histStmt = $pdo->prepare($historyInsert['sql']);
+            $histStmt->execute($historyInsert['params']);
         }
 
         $pdo->commit();
