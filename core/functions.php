@@ -967,6 +967,45 @@ function translateStatus($status, $lang = 'id')
     return isset($map_en[$status]) ? $map_en[$status] : ucwords(str_replace('-', ' ', $status));
 }
 
+function formatRelativeTimeId($datetime, $nowTs = null)
+{
+    if (empty($datetime)) {
+        return 'Belum pernah diperbarui';
+    }
+
+    $timestamp = is_numeric($datetime) ? (int)$datetime : strtotime((string)$datetime);
+    if ($timestamp === false || $timestamp <= 0) {
+        return 'Belum pernah diperbarui';
+    }
+
+    if ($nowTs === null) {
+        $nowTs = time();
+    }
+
+    $diff = (int)$nowTs - (int)$timestamp;
+
+    if ($diff <= 29) {
+        return 'Baru saja';
+    }
+
+    if ($diff < 3600) {
+        $minutes = max(1, (int)floor($diff / 60));
+        return 'Diperbarui ' . $minutes . ' menit lalu';
+    }
+
+    if ($diff < 86400) {
+        $hours = max(1, (int)floor($diff / 3600));
+        return 'Diperbarui ' . $hours . ' jam lalu';
+    }
+
+    if ($diff < 604800) {
+        $days = max(1, (int)floor($diff / 86400));
+        return 'Diperbarui ' . $days . ' hari lalu';
+    }
+
+    return 'Diperbarui pada ' . date('d/m/Y, H:i', $timestamp) . ' WIB';
+}
+
 // Check if a table has a specific column (uses global $pdo)
 function db_has_column($table, $column)
 {

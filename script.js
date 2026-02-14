@@ -10,6 +10,179 @@ if (navBar && menuBtns.length > 0) {
 	});
 }
 
+document.addEventListener("DOMContentLoaded", function () {
+	requestAnimationFrame(function () {
+		document.documentElement.classList.remove("dashboard-loading");
+	});
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+	const viewTable = document.querySelector(
+		".view-page .table-container table",
+	);
+	if (!viewTable) return;
+
+	function getRowActionButtons(row) {
+		if (!row) return [];
+		return Array.from(
+			row.querySelectorAll(".row-actions-inline .row-action-btn"),
+		);
+	}
+
+	function closeAllQuickPreviews(exceptId) {
+		const openRows = viewTable.querySelectorAll(".item-preview-row");
+		openRows.forEach((row) => {
+			if (exceptId && row.id === exceptId) return;
+			row.hidden = true;
+		});
+
+		const toggleButtons = viewTable.querySelectorAll(".js-preview-toggle");
+		toggleButtons.forEach((btn) => {
+			const targetId = btn.dataset.previewTarget || "";
+			if (exceptId && targetId === exceptId) return;
+			btn.setAttribute("aria-expanded", "false");
+			btn.dataset.expanded = "0";
+			const label = btn.querySelector("span");
+			if (label) label.textContent = "Lihat Detail";
+			const icon = btn.querySelector("i");
+			if (icon) {
+				icon.classList.remove("bx-chevron-up");
+				icon.classList.add("bx-chevron-down");
+			}
+		});
+	}
+
+	function openPreviewById(previewId, options = {}) {
+		if (!previewId) return;
+		const previewRow = document.getElementById(previewId);
+		if (!previewRow) return;
+
+		closeAllQuickPreviews(previewId);
+		previewRow.hidden = false;
+
+		const toggleButton = viewTable.querySelector(
+			`.js-preview-toggle[data-preview-target="${previewId}"]`,
+		);
+		if (toggleButton) {
+			toggleButton.setAttribute("aria-expanded", "true");
+			toggleButton.dataset.expanded = "1";
+			const label = toggleButton.querySelector("span");
+			if (label) label.textContent = "Sembunyikan";
+			const icon = toggleButton.querySelector("i");
+			if (icon) {
+				icon.classList.remove("bx-chevron-down");
+				icon.classList.add("bx-chevron-up");
+			}
+		}
+
+		if (options.focusHistory) {
+			const historyBlock = previewRow.querySelector(
+				".preview-history-block",
+			);
+			if (historyBlock) {
+				historyBlock.scrollIntoView({
+					behavior: "smooth",
+					block: "nearest",
+				});
+			}
+		}
+	}
+
+	function openOrTogglePreview(toggleButton) {
+		if (!toggleButton) return;
+		const previewId = toggleButton.dataset.previewTarget || "";
+		const previewRow = previewId
+			? document.getElementById(previewId)
+			: null;
+		if (!previewRow) return;
+
+		if (previewRow.hidden) {
+			openPreviewById(previewId, { focusHistory: false });
+		} else {
+			closeAllQuickPreviews();
+		}
+	}
+
+	document.addEventListener("click", function (event) {
+		const toggleButton = event.target.closest(".js-preview-toggle");
+		if (toggleButton && viewTable.contains(toggleButton)) {
+			openOrTogglePreview(toggleButton);
+			return;
+		}
+
+		const historyButton = event.target.closest(".js-preview-history");
+		if (historyButton && viewTable.contains(historyButton)) {
+			const previewId = historyButton.dataset.previewTarget || "";
+			openPreviewById(previewId, { focusHistory: true });
+		}
+	});
+
+	document.addEventListener("keydown", function (event) {
+		if (!document.body.classList.contains("view-page")) return;
+
+		if (event.key === "Escape") {
+			closeAllQuickPreviews();
+			return;
+		}
+
+		const focusedEl = document.activeElement;
+		if (!(focusedEl instanceof HTMLElement)) return;
+
+		if (
+			event.key === "Enter" &&
+			focusedEl.classList.contains("js-preview-toggle")
+		) {
+			event.preventDefault();
+			openOrTogglePreview(focusedEl);
+			return;
+		}
+
+		if (!focusedEl.classList.contains("row-action-btn")) return;
+
+		const currentRow = focusedEl.closest("tr.item-data-row");
+		if (!currentRow) return;
+
+		const currentButtons = getRowActionButtons(currentRow);
+		const currentIndex = currentButtons.indexOf(focusedEl);
+		if (currentIndex < 0) return;
+
+		if (event.key === "ArrowRight") {
+			event.preventDefault();
+			const nextBtn =
+				currentButtons[currentIndex + 1] || currentButtons[0];
+			if (nextBtn) nextBtn.focus();
+			return;
+		}
+
+		if (event.key === "ArrowLeft") {
+			event.preventDefault();
+			const prevBtn =
+				currentButtons[currentIndex - 1] ||
+				currentButtons[currentButtons.length - 1];
+			if (prevBtn) prevBtn.focus();
+			return;
+		}
+
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			const rows = Array.from(
+				viewTable.querySelectorAll("tbody tr.item-data-row"),
+			);
+			const rowIndex = rows.indexOf(currentRow);
+			if (rowIndex < 0) return;
+			const targetIndex =
+				event.key === "ArrowDown"
+					? Math.min(rows.length - 1, rowIndex + 1)
+					: Math.max(0, rowIndex - 1);
+			const targetButtons = getRowActionButtons(rows[targetIndex]);
+			const targetBtn =
+				targetButtons[currentIndex] ||
+				targetButtons[targetButtons.length - 1];
+			if (targetBtn) targetBtn.focus();
+		}
+	});
+});
+
 // Category filter for update-stock page (top-level, not nested)
 document.addEventListener("DOMContentLoaded", function () {
 	const filter = document.getElementById("category-filter");
@@ -42,6 +215,106 @@ document.addEventListener("DOMContentLoaded", function () {
 	filter.addEventListener("change", applyFilter);
 	// run once to populate count
 	applyFilter();
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+	const tools = document.querySelector(".dashboard-table-tools");
+	if (!tools) return;
+
+	const searchInput = document.getElementById("dashboard-item-search");
+	const filterButtons = document.querySelectorAll(
+		".dashboard-filter-buttons button",
+	);
+	const detailToggle = document.getElementById("dashboard-detail-toggle");
+	const detailPanels = document.querySelectorAll(".dashboard-detail-panel");
+	const rows = document.querySelectorAll(
+		".table-container tbody tr[data-status]",
+	);
+
+	if (!rows.length) return;
+
+	let activeFilter = "all";
+	let detailExpanded = false;
+
+	function setDetailExpanded(nextState) {
+		detailExpanded = !!nextState;
+
+		detailPanels.forEach((panel) => {
+			panel.hidden = !detailExpanded;
+		});
+
+		if (detailToggle) {
+			detailToggle.dataset.expanded = detailExpanded ? "1" : "0";
+			detailToggle.setAttribute(
+				"aria-expanded",
+				detailExpanded ? "true" : "false",
+			);
+			detailToggle.textContent = detailExpanded
+				? "Sembunyikan Detail"
+				: "Tampilkan Detail Lanjutan";
+		}
+
+		applyDashboardFilters();
+	}
+
+	function applyDashboardFilters() {
+		const searchValue = (
+			searchInput && searchInput.value ? searchInput.value : ""
+		)
+			.toString()
+			.trim()
+			.toLowerCase();
+
+		rows.forEach((row) => {
+			const status = (
+				row.getAttribute("data-status") || ""
+			).toLowerCase();
+			const isCritical = row.getAttribute("data-critical") === "1";
+			const isDefaultVisible =
+				row.getAttribute("data-default-visible") === "1";
+			const searchable = (
+				row.getAttribute("data-search") || ""
+			).toLowerCase();
+
+			const matchesSearch =
+				!searchValue || searchable.indexOf(searchValue) !== -1;
+
+			if (!detailExpanded) {
+				row.style.display = isDefaultVisible ? "" : "none";
+				return;
+			}
+
+			let matchesFilter = true;
+			if (activeFilter === "critical") {
+				matchesFilter = isCritical;
+			} else if (activeFilter === "in-stock") {
+				matchesFilter = status === "in-stock";
+			}
+
+			row.style.display = matchesSearch && matchesFilter ? "" : "none";
+		});
+	}
+
+	filterButtons.forEach((btn) => {
+		btn.addEventListener("click", function () {
+			activeFilter = this.getAttribute("data-filter") || "all";
+			filterButtons.forEach((item) => item.classList.remove("active"));
+			this.classList.add("active");
+			applyDashboardFilters();
+		});
+	});
+
+	if (searchInput) {
+		searchInput.addEventListener("input", applyDashboardFilters);
+	}
+
+	if (detailToggle) {
+		detailToggle.addEventListener("click", function () {
+			setDetailExpanded(!detailExpanded);
+		});
+	}
+
+	setDetailExpanded(false);
 });
 if (overlay && navBar) {
 	overlay.addEventListener("click", () => {
@@ -735,6 +1008,21 @@ document.addEventListener("DOMContentLoaded", function () {
 	const searchInput = document.getElementById("search-input");
 	const autocompleteList = document.getElementById("autocomplete-list");
 	const clearButton = document.getElementById("search-clear-btn");
+	const chipsContainer = document.getElementById("active-filter-chips");
+	const resetFiltersButton = document.getElementById("reset-filters-btn");
+	const advancedToggleButton = document.getElementById(
+		"toggle-advanced-filters",
+	);
+	const advancedPanel = document.getElementById("advanced-filters-panel");
+	const sortFilter = document.getElementById("advanced-sort");
+	const dirFilter = document.getElementById("advanced-dir");
+	const totalSummaryValue = document.getElementById("summary-total-items");
+	const criticalSummaryValue = document.getElementById(
+		"summary-critical-items",
+	);
+	const filterCountLabel = document.getElementById(
+		"summary-filter-count-label",
+	);
 	const filterForm = searchInput ? searchInput.closest("form") : null;
 	const categoryFilter = filterForm
 		? filterForm.querySelector('select[name="category"]')
@@ -747,8 +1035,13 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (!searchInput || !autocompleteList) return;
 
 	let debounceTimer;
+	let applyTimer;
 	let currentFocus = -1;
 	let activeFilterController = null;
+	const storageKey = "stockmanager.view.filters.v1";
+	const defaultSort =
+		(filterForm && filterForm.dataset.defaultSort) || "name";
+	const defaultDir = (filterForm && filterForm.dataset.defaultDir) || "asc";
 
 	// Debounce function to limit API calls
 	function debounce(func, delay) {
@@ -805,10 +1098,14 @@ document.addEventListener("DOMContentLoaded", function () {
 	function displaySuggestions(items, query) {
 		autocompleteList.innerHTML = "";
 		currentFocus = -1;
+		searchInput.setAttribute("aria-expanded", "true");
 
 		items.forEach((item, index) => {
 			const div = document.createElement("div");
 			div.className = "autocomplete-item";
+			div.id = `autocomplete-item-${index}`;
+			div.setAttribute("role", "option");
+			div.setAttribute("aria-selected", "false");
 			div.innerHTML = highlightMatch(item, query);
 			div.dataset.value = item;
 			div.dataset.index = index;
@@ -828,6 +1125,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		autocompleteList.innerHTML =
 			'<div class="autocomplete-loading">Mencari</div>';
 		autocompleteList.classList.add("show");
+		searchInput.setAttribute("aria-expanded", "true");
 	}
 
 	// Show no results message
@@ -835,6 +1133,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		autocompleteList.innerHTML =
 			'<div class="autocomplete-no-results">Tidak ada hasil ditemukan</div>';
 		autocompleteList.classList.add("show");
+		searchInput.setAttribute("aria-expanded", "true");
 	}
 
 	// Hide autocomplete dropdown
@@ -842,6 +1141,8 @@ document.addEventListener("DOMContentLoaded", function () {
 		autocompleteList.innerHTML = "";
 		autocompleteList.classList.remove("show");
 		currentFocus = -1;
+		searchInput.setAttribute("aria-expanded", "false");
+		searchInput.removeAttribute("aria-activedescendant");
 	}
 
 	function toggleClearButton() {
@@ -849,23 +1150,74 @@ document.addEventListener("DOMContentLoaded", function () {
 		clearButton.classList.toggle("show", searchInput.value.length > 0);
 	}
 
-	function getSortParams() {
-		const urlParams = new URLSearchParams(window.location.search);
-		const defaultSort =
-			(filterForm && filterForm.dataset.defaultSort) || "name";
-		const defaultDir =
-			(filterForm && filterForm.dataset.defaultDir) || "asc";
+	function getCurrentState() {
 		return {
+			search: searchInput.value.trim(),
+			category: categoryFilter ? categoryFilter.value : "",
+			status: statusFilter ? statusFilter.value : "",
+			sort: sortFilter ? sortFilter.value : defaultSort,
+			dir: dirFilter ? dirFilter.value : defaultDir,
+		};
+	}
+
+	function applyStateToControls(state) {
+		if (!state) return;
+		searchInput.value = state.search || "";
+		if (categoryFilter) categoryFilter.value = state.category || "";
+		if (statusFilter) statusFilter.value = state.status || "";
+		if (sortFilter) sortFilter.value = state.sort || defaultSort;
+		if (dirFilter) dirFilter.value = state.dir || defaultDir;
+	}
+
+	function saveState(state) {
+		try {
+			sessionStorage.setItem(storageKey, JSON.stringify(state));
+		} catch (error) {
+			console.warn("Cannot persist filter state", error);
+		}
+	}
+
+	function getStoredState() {
+		try {
+			const raw = sessionStorage.getItem(storageKey);
+			if (!raw) return null;
+			const parsed = JSON.parse(raw);
+			if (!parsed || typeof parsed !== "object") return null;
+			return parsed;
+		} catch (error) {
+			return null;
+		}
+	}
+
+	function stateFromUrl() {
+		const urlParams = new URLSearchParams(window.location.search);
+		return {
+			search: urlParams.get("search") || "",
+			category: urlParams.get("category") || "",
+			status: urlParams.get("status") || "",
 			sort: urlParams.get("sort") || defaultSort,
 			dir: urlParams.get("dir") || defaultDir,
 		};
 	}
 
-	function syncFilterQueryToUrl() {
+	function hasAnyQueryParams() {
+		const query = new URLSearchParams(window.location.search);
+		return (
+			query.has("search") ||
+			query.has("category") ||
+			query.has("status") ||
+			query.has("sort") ||
+			query.has("dir")
+		);
+	}
+
+	function syncFilterQueryToUrl(state) {
 		const url = new URL(window.location.href);
-		const nextSearch = searchInput.value.trim();
-		const nextCategory = categoryFilter ? categoryFilter.value : "";
-		const nextStatus = statusFilter ? statusFilter.value : "";
+		const nextSearch = state.search;
+		const nextCategory = state.category;
+		const nextStatus = state.status;
+		const nextSort = state.sort || defaultSort;
+		const nextDir = state.dir || defaultDir;
 
 		if (nextSearch) {
 			url.searchParams.set("search", nextSearch);
@@ -885,6 +1237,18 @@ document.addEventListener("DOMContentLoaded", function () {
 			url.searchParams.delete("status");
 		}
 
+		if (nextSort && nextSort !== defaultSort) {
+			url.searchParams.set("sort", nextSort);
+		} else {
+			url.searchParams.delete("sort");
+		}
+
+		if (nextDir && nextDir !== defaultDir) {
+			url.searchParams.set("dir", nextDir);
+		} else {
+			url.searchParams.delete("dir");
+		}
+
 		history.replaceState(
 			null,
 			"",
@@ -892,25 +1256,143 @@ document.addEventListener("DOMContentLoaded", function () {
 		);
 	}
 
+	function updateSummaryCounts() {
+		if (!tableBody) return;
+		const rows = tableBody.querySelectorAll("tr");
+		let dataRows = 0;
+		let criticalRows = 0;
+
+		rows.forEach((row) => {
+			const noDataCell = row.querySelector("td.no-data");
+			if (noDataCell) return;
+			dataRows += 1;
+			const statusEl = row.querySelector("span.status");
+			if (
+				statusEl &&
+				(statusEl.classList.contains("low-stock") ||
+					statusEl.classList.contains("warning-stock") ||
+					statusEl.classList.contains("out-stock"))
+			) {
+				criticalRows += 1;
+			}
+		});
+
+		if (totalSummaryValue) {
+			totalSummaryValue.textContent = dataRows.toLocaleString("id-ID");
+		}
+		if (criticalSummaryValue) {
+			criticalSummaryValue.textContent =
+				criticalRows.toLocaleString("id-ID");
+		}
+	}
+
+	function renderFilterChips(state) {
+		if (!chipsContainer) return;
+		chipsContainer.innerHTML = "";
+
+		const chipConfigs = [];
+		if (state.search) {
+			chipConfigs.push({
+				key: "search",
+				label: `Cari: ${state.search}`,
+			});
+		}
+		if (state.category) {
+			chipConfigs.push({
+				key: "category",
+				label: `Kategori: ${state.category}`,
+			});
+		}
+		if (state.status) {
+			let statusLabel = state.status;
+			if (statusFilter) {
+				const selected = statusFilter.querySelector(
+					`option[value="${state.status}"]`,
+				);
+				if (selected) statusLabel = selected.textContent.trim();
+			}
+			chipConfigs.push({
+				key: "status",
+				label: `Status: ${statusLabel}`,
+			});
+		}
+		if (state.sort && state.sort !== defaultSort) {
+			let sortLabel = state.sort;
+			if (sortFilter) {
+				const selected = sortFilter.querySelector(
+					`option[value="${state.sort}"]`,
+				);
+				if (selected) sortLabel = selected.textContent.trim();
+			}
+			chipConfigs.push({
+				key: "sort",
+				label: `Urut: ${sortLabel}`,
+			});
+		}
+		if (state.dir && state.dir !== defaultDir) {
+			const dirLabel = state.dir === "desc" ? "Turun" : "Naik";
+			chipConfigs.push({
+				key: "dir",
+				label: `Arah: ${dirLabel}`,
+			});
+		}
+
+		if (filterCountLabel) {
+			filterCountLabel.textContent = `Filter Aktif (${chipConfigs.length})`;
+		}
+
+		if (!chipConfigs.length) {
+			const empty = document.createElement("p");
+			empty.className = "summary-muted";
+			empty.id = "summary-filter-empty";
+			empty.textContent = "Semua data tanpa filter";
+			chipsContainer.appendChild(empty);
+			return;
+		}
+
+		chipConfigs.forEach((chip) => {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "summary-filter-chip summary-filter-chip-action";
+			button.dataset.filterKey = chip.key;
+			button.setAttribute("aria-label", `Hapus filter ${chip.label}`);
+			button.innerHTML = `<span>${chip.label}</span><i class='bx bx-x' aria-hidden="true"></i>`;
+			chipsContainer.appendChild(button);
+		});
+	}
+
+	function clearFilterByKey(filterKey) {
+		if (filterKey === "search") searchInput.value = "";
+		if (filterKey === "category" && categoryFilter)
+			categoryFilter.value = "";
+		if (filterKey === "status" && statusFilter) statusFilter.value = "";
+		if (filterKey === "sort" && sortFilter) sortFilter.value = defaultSort;
+		if (filterKey === "dir" && dirFilter) dirFilter.value = defaultDir;
+		toggleClearButton();
+		runApply();
+	}
+
 	async function updateTableRows() {
 		if (!tableBody || !filterForm) return;
+		const currentState = getCurrentState();
 
-		syncFilterQueryToUrl();
+		syncFilterQueryToUrl(currentState);
+		saveState(currentState);
+		renderFilterChips(currentState);
 
 		if (activeFilterController) {
 			activeFilterController.abort();
 		}
 
 		activeFilterController = new AbortController();
-		const sortParams = getSortParams();
 		const filterContext =
 			(filterForm && filterForm.dataset.filterContext) || "view";
 		const params = new URLSearchParams({
-			search: searchInput.value,
-			category: categoryFilter ? categoryFilter.value : "",
-			status: statusFilter ? statusFilter.value : "",
-			sort: sortParams.sort,
-			dir: sortParams.dir,
+			search: currentState.search,
+			category: currentState.category,
+			status: currentState.status,
+			sort: currentState.sort,
+			dir: currentState.dir,
 			context: filterContext,
 		});
 
@@ -932,6 +1414,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			const data = await response.json();
 			if (typeof data.html === "string") {
 				tableBody.innerHTML = data.html;
+				updateSummaryCounts();
 			}
 		} catch (error) {
 			if (error.name !== "AbortError") {
@@ -940,14 +1423,21 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 	}
 
+	function runApply(delay) {
+		clearTimeout(applyTimer);
+		if (delay && delay > 0) {
+			applyTimer = setTimeout(updateTableRows, delay);
+			return;
+		}
+		updateTableRows();
+	}
+
 	// Select an item from dropdown
 	function selectItem(value) {
 		searchInput.value = value;
 		hideAutocomplete();
 		toggleClearButton();
-		updateTableRows();
-		// Optionally submit the form automatically
-		// searchInput.closest('form').submit();
+		runApply();
 	}
 
 	// Add active class to items
@@ -957,11 +1447,22 @@ document.addEventListener("DOMContentLoaded", function () {
 		if (currentFocus >= items.length) currentFocus = 0;
 		if (currentFocus < 0) currentFocus = items.length - 1;
 		items[currentFocus].classList.add("active");
+		items[currentFocus].setAttribute("aria-selected", "true");
+		if (items[currentFocus].id) {
+			searchInput.setAttribute(
+				"aria-activedescendant",
+				items[currentFocus].id,
+			);
+		}
 	}
 
 	// Remove active class from all items
 	function removeActive(items) {
-		items.forEach((item) => item.classList.remove("active"));
+		items.forEach((item) => {
+			item.classList.remove("active");
+			item.setAttribute("aria-selected", "false");
+		});
+		searchInput.removeAttribute("aria-activedescendant");
 	}
 
 	// Handle keyboard navigation
@@ -1001,18 +1502,30 @@ document.addEventListener("DOMContentLoaded", function () {
 	);
 
 	searchInput.addEventListener("input", function () {
-		updateTableRows();
+		runApply(400);
 	});
 
 	if (categoryFilter) {
 		categoryFilter.addEventListener("change", function () {
-			updateTableRows();
+			runApply();
 		});
 	}
 
 	if (statusFilter) {
 		statusFilter.addEventListener("change", function () {
-			updateTableRows();
+			runApply();
+		});
+	}
+
+	if (sortFilter) {
+		sortFilter.addEventListener("change", function () {
+			runApply();
+		});
+	}
+
+	if (dirFilter) {
+		dirFilter.addEventListener("change", function () {
+			runApply();
 		});
 	}
 
@@ -1033,14 +1546,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	// Prevent form submission when autocomplete is open and user presses Enter
 	searchInput.closest("form").addEventListener("submit", function (e) {
+		e.preventDefault();
 		if (autocompleteList.classList.contains("show")) {
 			const items =
 				autocompleteList.querySelectorAll(".autocomplete-item");
 			if (currentFocus > -1 && items[currentFocus]) {
-				e.preventDefault();
 				selectItem(items[currentFocus].dataset.value);
+				return;
 			}
 		}
+		runApply();
 	});
 
 	if (clearButton) {
@@ -1048,10 +1563,120 @@ document.addEventListener("DOMContentLoaded", function () {
 			searchInput.value = "";
 			hideAutocomplete();
 			toggleClearButton();
-			updateTableRows();
+			runApply();
 			searchInput.focus();
 		});
 	}
 
+	if (filterForm) {
+		filterForm.addEventListener("keydown", function (event) {
+			const isArrowKey =
+				event.key === "ArrowRight" ||
+				event.key === "ArrowLeft" ||
+				event.key === "ArrowDown" ||
+				event.key === "ArrowUp";
+			if (!isArrowKey) return;
+
+			const controls = Array.from(
+				filterForm.querySelectorAll(
+					"input, select, button, a, [tabindex]:not([tabindex='-1'])",
+				),
+			).filter((el) => !el.disabled && el.offsetParent !== null);
+
+			const currentIndex = controls.indexOf(document.activeElement);
+			if (currentIndex < 0) return;
+
+			event.preventDefault();
+			const delta =
+				event.key === "ArrowRight" || event.key === "ArrowDown"
+					? 1
+					: -1;
+			const nextIndex = Math.max(
+				0,
+				Math.min(controls.length - 1, currentIndex + delta),
+			);
+			controls[nextIndex].focus();
+		});
+	}
+
+	if (chipsContainer) {
+		chipsContainer.addEventListener("click", function (event) {
+			const removeButton = event.target.closest("[data-filter-key]");
+			if (!removeButton) return;
+			clearFilterByKey(removeButton.dataset.filterKey || "");
+		});
+	}
+
+	if (resetFiltersButton) {
+		resetFiltersButton.addEventListener("click", function () {
+			searchInput.value = "";
+			if (categoryFilter) categoryFilter.value = "";
+			if (statusFilter) statusFilter.value = "";
+			if (sortFilter) sortFilter.value = defaultSort;
+			if (dirFilter) dirFilter.value = defaultDir;
+			toggleClearButton();
+			hideAutocomplete();
+			runApply();
+		});
+	}
+
+	if (advancedToggleButton && advancedPanel) {
+		advancedToggleButton.addEventListener("click", function () {
+			const isExpanded =
+				advancedToggleButton.getAttribute("aria-expanded") === "true";
+			advancedToggleButton.setAttribute(
+				"aria-expanded",
+				isExpanded ? "false" : "true",
+			);
+			advancedPanel.hidden = isExpanded;
+		});
+
+		document.addEventListener("keydown", function (event) {
+			if (event.key !== "Escape") return;
+			if (advancedPanel.hidden) return;
+			advancedPanel.hidden = true;
+			advancedToggleButton.setAttribute("aria-expanded", "false");
+			advancedToggleButton.focus();
+		});
+	}
+
+	const currentUrlState = stateFromUrl();
+	applyStateToControls(currentUrlState);
+
+	if (!hasAnyQueryParams()) {
+		const persistedState = getStoredState();
+		if (persistedState) {
+			applyStateToControls({
+				search: persistedState.search || "",
+				category: persistedState.category || "",
+				status: persistedState.status || "",
+				sort: persistedState.sort || defaultSort,
+				dir: persistedState.dir || defaultDir,
+			});
+		}
+	}
+
+	if (sortFilter && sortFilter.value !== defaultSort) {
+		if (advancedPanel) advancedPanel.hidden = false;
+		if (advancedToggleButton) {
+			advancedToggleButton.setAttribute("aria-expanded", "true");
+		}
+	}
+
+	if (dirFilter && dirFilter.value !== defaultDir) {
+		if (advancedPanel) advancedPanel.hidden = false;
+		if (advancedToggleButton) {
+			advancedToggleButton.setAttribute("aria-expanded", "true");
+		}
+	}
+
 	toggleClearButton();
+	renderFilterChips(getCurrentState());
+	updateSummaryCounts();
+
+	if (!hasAnyQueryParams() && getStoredState()) {
+		runApply();
+	} else {
+		saveState(getCurrentState());
+	}
 });

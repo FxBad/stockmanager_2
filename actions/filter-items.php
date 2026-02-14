@@ -79,7 +79,7 @@ if ($sortBy !== 'name') {
 }
 
 $showSensitive = isRole('office') || isRole('admin');
-$colspan = $context === 'manage' ? 10 : ($showSensitive ? 8 : 7);
+$colspan = $context === 'manage' ? 10 : ($showSensitive ? 9 : 8);
 
 try {
     $stmt = $pdo->prepare($query);
@@ -179,22 +179,33 @@ try {
                 </tr>
             <?php
             } else {
+                $statusIconClass = 'bx-info-circle';
+                if ($itemStatus === 'in-stock') {
+                    $statusIconClass = 'bx-check-circle';
+                } elseif ($itemStatus === 'low-stock') {
+                    $statusIconClass = 'bx-error-circle';
+                } elseif ($itemStatus === 'warning-stock') {
+                    $statusIconClass = 'bx-error';
+                } elseif ($itemStatus === 'out-stock') {
+                    $statusIconClass = 'bx-x-circle';
+                }
             ?>
-                <tr>
-                    <td data-label="Nama Barang"><?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td data-label="Kategori"><?php echo htmlspecialchars($itemCategory, ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td data-label="Stok"><?php echo number_format((int)$fieldStock); ?></td>
+                <tr class="item-data-row" data-item-id="<?php echo $id; ?>">
+                    <td data-label="Nama Barang" class="col-text"><?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td data-label="Kategori" class="col-text"><?php echo htmlspecialchars($itemCategory, ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td data-label="Stok" class="col-number"><?php echo number_format((int)$fieldStock); ?></td>
                     <?php if ($showSensitive): ?>
-                        <td data-label="Pemakaian Harian"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
+                        <td data-label="Pemakaian Harian" class="col-number"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
                     <?php endif; ?>
-                    <td data-label="Level (cm)"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
-                    <td data-label="Ketahanan di lapangan"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
-                    <td data-label="Status">
-                        <span class="status <?php echo htmlspecialchars($itemStatus, ENT_QUOTES, 'UTF-8'); ?>">
-                            <?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?>
+                    <td data-label="Level (cm)" class="col-number"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
+                    <td data-label="Ketahanan di lapangan" class="col-number"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
+                    <td data-label="Status" class="col-text">
+                        <span class="status <?php echo htmlspecialchars($itemStatus, ENT_QUOTES, 'UTF-8'); ?>" role="status" aria-label="Status <?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?>">
+                            <i class='bx <?php echo htmlspecialchars($statusIconClass, ENT_QUOTES, 'UTF-8'); ?>' aria-hidden="true"></i>
+                            <span><?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?></span>
                         </span>
                     </td>
-                    <td data-label="Terakhir Diperbarui" class="last-login">
+                    <td data-label="Terakhir Diperbarui" class="last-login col-text">
                         <?php if (!empty($item['last_updated'])): ?>
                             <span class="timestamp">
                                 <i class='bx bx-time-five'></i>
@@ -206,6 +217,51 @@ try {
                                 Tidak Pernah
                             </span>
                         <?php endif; ?>
+                    </td>
+                    <td data-label="Aksi" class="col-text">
+                        <div class="row-actions-inline">
+                            <button type="button" class="row-action-btn row-action-preview js-preview-toggle" data-preview-target="preview-row-<?php echo $id; ?>" aria-expanded="false" aria-controls="preview-row-<?php echo $id; ?>" aria-label="Lihat detail item <?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>">
+                                <i class='bx bx-chevron-down'></i>
+                                <span>Lihat Detail</span>
+                            </button>
+                            <a class="row-action-btn row-action-edit" href="edit-item.php?id=<?php echo $id; ?>" aria-label="Edit item <?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>">
+                                <i class='bx bx-edit'></i>
+                                <span>Edit</span>
+                            </a>
+                            <button type="button" class="row-action-btn row-action-history js-preview-history" data-preview-target="preview-row-<?php echo $id; ?>" aria-controls="preview-row-<?php echo $id; ?>" aria-label="Lihat riwayat item <?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>">
+                                <i class='bx bx-history'></i>
+                                <span>Riwayat</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="preview-row-<?php echo $id; ?>" class="item-preview-row" hidden aria-live="polite">
+                    <td colspan="<?php echo $colspan; ?>" class="item-preview-cell">
+                        <div class="item-preview-grid">
+                            <section class="item-preview-block">
+                                <h4><i class='bx bx-trending-up'></i> Tren Pemakaian</h4>
+                                <p>Pemakaian harian: <strong><?php echo number_format((float)$resolvedDaily['value'], 2); ?></strong><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (estimasi)' : ''); ?></p>
+                                <p>Ketahanan saat ini: <strong><?php echo number_format($daysCoverage, 1); ?> hari</strong></p>
+                                <p>Stok efektif: <strong><?php echo number_format((float)$effectiveStock, 1); ?></strong></p>
+                            </section>
+                            <section class="item-preview-block preview-history-block">
+                                <h4><i class='bx bx-time-five'></i> Update Terakhir</h4>
+                                <p>
+                                    <?php if (!empty($item['last_updated'])): ?>
+                                        <?php echo date('d/m/Y, H:i', strtotime((string)$item['last_updated'])) . ' WIB'; ?>
+                                    <?php else: ?>
+                                        Belum pernah diperbarui
+                                    <?php endif; ?>
+                                </p>
+                                <p>Status saat ini: <strong><?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?></strong></p>
+                            </section>
+                            <section class="item-preview-block">
+                                <h4><i class='bx bx-id-card'></i> Metadata</h4>
+                                <p>Item ID: <strong>#<?php echo $id; ?></strong></p>
+                                <p>Dibuat oleh: <strong><?php echo htmlspecialchars((string)($item['added_by_name'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></strong></p>
+                                <p>Diperbarui oleh: <strong><?php echo htmlspecialchars((string)($item['updated_by_name'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></strong></p>
+                            </section>
+                        </div>
                     </td>
                 </tr>
 <?php
