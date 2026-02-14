@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Cache metadata checks
             $includeLevel = db_has_column('items', 'level');
             $itemsHasWarehouseStock = db_has_column('items', 'warehouse_stock');
+            $itemsHasCalculationType = db_has_column('items', 'calculation_type');
             $histHasLevel = db_has_column('item_stock_history', 'level');
             $histHasWarehouseOld = db_has_column('item_stock_history', 'warehouse_stock_old');
             $histHasWarehouseNew = db_has_column('item_stock_history', 'warehouse_stock_new');
@@ -104,7 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'min_days_coverage',
                 'description',
                 'added_by',
-                'calculation_type',
                 'status'
             ];
             $placeholders = [
@@ -117,9 +117,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':min_days_coverage',
                 ':description',
                 ':added_by',
-                "'daily_consumption'",
                 ':status'
             ];
+
+            if ($itemsHasCalculationType) {
+                $insertPos = count($columns) - 1;
+                array_splice($columns, $insertPos, 0, 'calculation_type');
+                array_splice($placeholders, $insertPos, 0, ':calculation_type');
+            }
 
             if ($itemsHasWarehouseStock) {
                 array_splice($columns, 3, 0, 'warehouse_stock');
@@ -152,6 +157,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':added_by' => $_SESSION['user_id'],
                 ':status' => $statusNew
             ];
+
+            if ($itemsHasCalculationType) {
+                $params[':calculation_type'] = 'daily_consumption';
+            }
 
             if ($itemsHasWarehouseStock) {
                 $params[':warehouse_stock'] = $warehouseStock;
