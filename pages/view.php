@@ -80,15 +80,38 @@ try {
     $items = [];
 }
 
+$criticalStatuses = ['low-stock', 'warning-stock', 'out-stock'];
+$criticalItemsCount = 0;
+foreach ($items as $summaryItem) {
+    $summaryStatus = isset($summaryItem['status']) ? (string)$summaryItem['status'] : '';
+    if (in_array($summaryStatus, $criticalStatuses, true)) {
+        $criticalItemsCount++;
+    }
+}
+
+$activeFilters = [];
+if ($search !== '') {
+    $activeFilters[] = 'Cari: ' . $search;
+}
+if ($category !== '') {
+    $activeFilters[] = 'Kategori: ' . $category;
+}
+if ($status !== '') {
+    $activeFilters[] = 'Status: ' . translateStatus($status, 'id');
+}
+
+$totalItemsCount = count($items);
+$activeFilterCount = count($activeFilters);
+
 // Show warehouse stock and daily consumption only to office and admin
 $showSensitive = isRole('office') || isRole('admin');
 
 // Compute colspan for empty-state row (total visible columns):
-// Columns: Name, Category, Field Stock, [Warehouse Stock], [Total Stock], [Daily Consumption], Level, Coverage, Status, Last Updated
+// Columns: Name, Category, Stock, [Daily Consumption], Level, Coverage, Status, Last Updated
 // Count them programmatically for clarity
-$colCount = 3; // Name, Category, Field Stock
+$colCount = 3; // Name, Category, Stock
 if ($showSensitive) {
-    $colCount += 3; // Warehouse Stock, Total Stock, Daily Consumption
+    $colCount += 1; // Daily Consumption
 }
 $colCount += 4; // Level, Coverage, Status, Last Updated
 $colspan = $colCount;
@@ -110,7 +133,7 @@ $colspan = $colCount;
     <link href="https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css" rel="stylesheet">
 </head>
 
-<body>
+<body class="view-page">
     <?php include __DIR__ . '/../shared/nav.php'; ?>
 
     <main class="main-container">
@@ -119,6 +142,29 @@ $colspan = $colCount;
         </div>
 
         <div class="table-container">
+            <section class="view-summary" aria-label="Ringkasan data stok">
+                <article class="summary-card">
+                    <p class="summary-label">Total Item Ditampilkan</p>
+                    <p class="summary-value"><?php echo number_format($totalItemsCount); ?></p>
+                </article>
+                <article class="summary-card summary-card-critical">
+                    <p class="summary-label">Item Stok Kritis</p>
+                    <p class="summary-value"><?php echo number_format($criticalItemsCount); ?></p>
+                </article>
+                <article class="summary-card summary-card-filters">
+                    <p class="summary-label">Filter Aktif (<?php echo $activeFilterCount; ?>)</p>
+                    <?php if ($activeFilterCount > 0): ?>
+                        <div class="summary-filter-chips" aria-label="Filter aktif saat ini">
+                            <?php foreach ($activeFilters as $activeFilter): ?>
+                                <span class="summary-filter-chip"><?php echo htmlspecialchars($activeFilter); ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="summary-muted">Semua data tanpa filter</p>
+                    <?php endif; ?>
+                </article>
+            </section>
+
             <!-- Search and Filter Section -->
             <div class="table-header">
                 <form method="GET" class="table-filters" data-filter-context="view" data-default-sort="name" data-default-dir="asc">
@@ -154,10 +200,8 @@ $colspan = $colCount;
 
             <!-- Data Table -->
             <table>
-                <!-- Table Headers -->
                 <thead>
                     <tr>
-                        <!-- Sortable Item Name column -->
                         <th>
                             <a href="?search=<?= urlencode($search) ?>&category=<?= urlencode($category) ?>&status=<?= urlencode($status) ?>&sort=name&dir=<?= ($sortBy === 'name' && $sortDir === 'ASC') ? 'desc' : 'asc' ?>" class="th-sort">
                                 Nama Barang
@@ -168,8 +212,6 @@ $colspan = $colCount;
                                 <?php endif; ?>
                             </a>
                         </th>
-
-                        <!-- Sortable Category column -->
                         <th>
                             <a href="?search=<?= urlencode($search) ?>&category=<?= urlencode($category) ?>&status=<?= urlencode($status) ?>&sort=category&dir=<?= ($sortBy === 'category' && $sortDir === 'ASC') ? 'desc' : 'asc' ?>" class="th-sort">
                                 Kategori
@@ -180,17 +222,13 @@ $colspan = $colCount;
                                 <?php endif; ?>
                             </a>
                         </th>
-
-                        <!-- Regular columns -->
-                        <th>Stok</th>
+                        <th class="col-number">Stok</th>
                         <?php if ($showSensitive): ?>
-                            <th>Pemakaian Harian</th>
+                            <th class="col-number">Pemakaian Harian</th>
                         <?php endif; ?>
-                        <th>Level (cm)</th>
-                        <th>Ketahanan di lapangan</th>
+                        <th class="col-number">Level (cm)</th>
+                        <th class="col-number">Ketahanan di lapangan</th>
                         <th>Status</th>
-
-                        <!-- Sortable Last Updated column -->
                         <th>
                             <a href="?search=<?= urlencode($search) ?>&category=<?= urlencode($category) ?>&status=<?= urlencode($status) ?>&sort=last_updated&dir=<?= ($sortBy === 'last_updated' && $sortDir === 'ASC') ? 'desc' : 'asc' ?>" class="th-sort">
                                 Terakhir Diperbarui
@@ -210,17 +248,15 @@ $colspan = $colCount;
                         </tr>
                     <?php else: ?>
                         <?php foreach ($items as $item):
-                            // Normalize and cast values
                             $name = isset($item['name']) ? (string)$item['name'] : '';
-                            $category = isset($item['category']) ? (string)$item['category'] : '';
+                            $itemCategory = isset($item['category']) ? (string)$item['category'] : '';
                             $field_stock = isset($item['field_stock']) ? (float)$item['field_stock'] : 0;
                             $unit_conversion = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1;
                             $level_conversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unit_conversion;
                             $daily_consumption = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0;
                             $level = array_key_exists('level', $item) ? $item['level'] : null;
                             $calculation_mode = isset($item['calculation_mode']) ? (string)$item['calculation_mode'] : 'combined';
-                            $status = isset($item['status']) ? (string)$item['status'] : '';
-
+                            $itemStatus = isset($item['status']) ? (string)$item['status'] : '';
                             $hasLevel = isset($item['has_level']) ? (bool)$item['has_level'] : false;
 
                             $totalStock = calculateEffectiveStock($field_stock, $unit_conversion, $level, $hasLevel, [
@@ -228,6 +264,7 @@ $colspan = $colCount;
                                 'qty_conversion' => $unit_conversion,
                                 'calculation_mode' => $calculation_mode
                             ]);
+
                             $daysCoverage = calculateDaysCoverage(
                                 $field_stock,
                                 0,
@@ -238,7 +275,7 @@ $colspan = $colCount;
                                 $hasLevel,
                                 [
                                     'item_id' => isset($item['id']) ? (int)$item['id'] : 0,
-                                    'category' => $category,
+                                    'category' => $itemCategory,
                                     'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
                                     'level_conversion' => $level_conversion,
                                     'qty_conversion' => $unit_conversion,
@@ -248,26 +285,38 @@ $colspan = $colCount;
 
                             $resolvedDaily = resolveDailyConsumption($daily_consumption, [
                                 'item_id' => isset($item['id']) ? (int)$item['id'] : 0,
-                                'category' => $category,
+                                'category' => $itemCategory,
                                 'effective_stock' => $totalStock,
                                 'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
                             ]);
+
+                            $statusIconClass = 'bx-info-circle';
+                            if ($itemStatus === 'in-stock') {
+                                $statusIconClass = 'bx-check-circle';
+                            } elseif ($itemStatus === 'low-stock') {
+                                $statusIconClass = 'bx-error-circle';
+                            } elseif ($itemStatus === 'warning-stock') {
+                                $statusIconClass = 'bx-error';
+                            } elseif ($itemStatus === 'out-stock') {
+                                $statusIconClass = 'bx-x-circle';
+                            }
                         ?>
                             <tr>
-                                <td data-label="Nama Barang"><?php echo htmlspecialchars($name); ?></td>
-                                <td data-label="Kategori"><?php echo htmlspecialchars($category); ?></td>
-                                <td data-label="Stok"><?php echo number_format((int)$field_stock); ?></td>
+                                <td data-label="Nama Barang" class="col-text"><?php echo htmlspecialchars($name); ?></td>
+                                <td data-label="Kategori" class="col-text"><?php echo htmlspecialchars($itemCategory); ?></td>
+                                <td data-label="Stok" class="col-number"><?php echo number_format((int)$field_stock); ?></td>
                                 <?php if ($showSensitive): ?>
-                                    <td data-label="Pemakaian Harian"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
+                                    <td data-label="Pemakaian Harian" class="col-number"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
                                 <?php endif; ?>
-                                <td data-label="Level (cm)"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
-                                <td data-label="Ketahanan di lapangan"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
-                                <td data-label="Status">
-                                    <span class="status <?php echo htmlspecialchars($status); ?>">
-                                        <?php echo translateStatus($status, 'id'); ?>
+                                <td data-label="Level (cm)" class="col-number"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
+                                <td data-label="Ketahanan di lapangan" class="col-number"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
+                                <td data-label="Status" class="col-text">
+                                    <span class="status <?php echo htmlspecialchars($itemStatus); ?>">
+                                        <i class='bx <?php echo htmlspecialchars($statusIconClass); ?>' aria-hidden="true"></i>
+                                        <span><?php echo translateStatus($itemStatus, 'id'); ?></span>
                                     </span>
                                 </td>
-                                <td data-label="Terakhir Diperbarui" class="last-login">
+                                <td data-label="Terakhir Diperbarui" class="last-login col-text">
                                     <?php if (!empty($item['last_updated'])): ?>
                                         <span class="timestamp">
                                             <i class='bx bx-time-five'></i>

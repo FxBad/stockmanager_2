@@ -537,6 +537,132 @@ nav.open ~ .main-container {
 	font-weight: 600;
 }
 
+/* View page hierarchy: summary -> filters -> table */
+.view-page .table-container {
+	overflow-x: auto;
+}
+
+.view-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.summary-card {
+	background: #fff;
+	border: 1px solid rgba(52, 78, 65, 0.16);
+	border-radius: 10px;
+	padding: 12px 14px;
+}
+
+.summary-card-critical {
+	border-color: rgba(255, 149, 0, 0.45);
+}
+
+.summary-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--hunter-green);
+	margin-bottom: 6px;
+}
+
+.summary-value {
+	font-size: 24px;
+	line-height: 1.2;
+	font-weight: 600;
+	color: var(--brunswick-green);
+}
+
+.summary-filter-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.summary-filter-chip {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 8px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 500;
+	background: rgba(88, 129, 87, 0.12);
+	color: var(--brunswick-green);
+}
+
+.summary-muted {
+	font-size: 13px;
+	color: var(--hunter-green);
+	opacity: 0.8;
+}
+
+.view-page .table-header {
+	position: sticky;
+	top: 70px;
+	z-index: 45;
+	background: #fff;
+	padding: 10px 0;
+	margin-bottom: 12px;
+	border-bottom: 1px solid rgba(52, 78, 65, 0.12);
+}
+
+.view-page .table-container thead th {
+	position: sticky;
+	top: 138px;
+	z-index: 35;
+}
+
+.view-page .table-container table {
+	min-width: 940px;
+}
+
+.view-page .col-number {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.view-page .col-text {
+	text-align: left;
+}
+
+.view-page .status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+	border: 1px solid transparent;
+}
+
+.view-page .status i {
+	font-size: 16px;
+	line-height: 1;
+}
+
+.view-page .status.in-stock {
+	background: #e3f2e5;
+	color: #1f6d31;
+	border-color: #8fc89d;
+}
+
+.view-page .status.low-stock {
+	background: #fff4e5;
+	color: #8a4d00;
+	border-color: #ffbf7a;
+}
+
+.view-page .status.warning-stock {
+	background: #fff8e5;
+	color: #8f4f00;
+	border-color: #ffc966;
+}
+
+.view-page .status.out-stock {
+	background: #fde8e8;
+	color: #9a1f1f;
+	border-color: #f4a5a5;
+}
+
 /* Mobile optimization for table container */
 @media screen and (max-width: 420px) {
 	.table-container {
@@ -551,6 +677,18 @@ nav.open ~ .main-container {
 		margin-bottom: 16px;
 		line-height: 1.4;
 	}
+
+	.view-summary {
+		grid-template-columns: 1fr;
+	}
+
+	.view-page .table-header {
+		top: 60px;
+	}
+
+	.view-page .table-container thead th {
+		top: 170px;
+	}
 }
 
 @media screen and (max-width: 400px) {
@@ -562,6 +700,10 @@ nav.open ~ .main-container {
 	.table-container h3 {
 		font-size: 17px;
 		margin-bottom: 14px;
+	}
+
+	.view-page .table-container thead th {
+		top: 164px;
 	}
 }
 
