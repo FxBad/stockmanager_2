@@ -304,6 +304,8 @@ function initLevelToggle(root = document) {
 	const hasLevelEl = root.querySelector("#has_level");
 	const levelGroup = root.querySelector("#level-group");
 	const levelConversionGroup = root.querySelector("#level-group-conversion");
+	const levelModeGroup = root.querySelector("#level-group-mode");
+	const levelModeSelect = root.querySelector("#calculation_mode");
 	if (!levelGroup) return;
 	function toggle() {
 		if (hasLevelEl) {
@@ -312,6 +314,12 @@ function initLevelToggle(root = document) {
 				levelConversionGroup.style.display = hasLevelEl.checked
 					? ""
 					: "none";
+			}
+			if (levelModeGroup) {
+				levelModeGroup.style.display = hasLevelEl.checked ? "" : "none";
+			}
+			if (!hasLevelEl.checked && levelModeSelect) {
+				levelModeSelect.value = "combined";
 			}
 			return;
 		}
@@ -325,10 +333,19 @@ function initLevelToggle(root = document) {
 			if (levelConversionGroup) {
 				levelConversionGroup.style.display = "";
 			}
+			if (levelModeGroup) {
+				levelModeGroup.style.display = "";
+			}
 		} else {
 			levelGroup.style.display = "none";
 			if (levelConversionGroup) {
 				levelConversionGroup.style.display = "none";
+			}
+			if (levelModeGroup) {
+				levelModeGroup.style.display = "none";
+			}
+			if (levelModeSelect) {
+				levelModeSelect.value = "combined";
 			}
 		}
 	}

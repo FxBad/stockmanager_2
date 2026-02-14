@@ -197,6 +197,11 @@ function calculateEffectiveStock($fieldStock, $unitConversion, $level = null, $h
     $qtyConversionCombined = isset($context['qty_conversion']) && is_numeric($context['qty_conversion'])
         ? max(0.0, (float)$context['qty_conversion'])
         : $qtyConversion;
+    $calculationMode = isset($context['calculation_mode']) ? strtolower((string)$context['calculation_mode']) : 'combined';
+
+    if ($calculationMode === 'multiplied') {
+        return $levelConversion * $levelStock * $qtyStock;
+    }
 
     return ($levelStock * $levelConversion) + ($qtyStock * $qtyConversionCombined);
 }
@@ -248,6 +253,7 @@ function itemSchemaFlags()
         'items_has_level_flag' => db_has_column('items', 'has_level'),
         'items_has_level_value' => db_has_column('items', 'level'),
         'items_has_level_conversion' => db_has_column('items', 'level_conversion'),
+        'items_has_calculation_mode' => db_has_column('items', 'calculation_mode'),
         'items_has_warehouse_stock' => db_has_column('items', 'warehouse_stock'),
         'items_has_calculation_type' => db_has_column('items', 'calculation_type'),
         'hist_has_level' => db_has_column('item_stock_history', 'level'),
@@ -275,6 +281,8 @@ function normalizeItemInput(array $input, array $schema)
     $levelConversion = isset($input['level_conversion']) && is_numeric($input['level_conversion'])
         ? round((float)$input['level_conversion'], 1)
         : $qtyConversion;
+    $calculationModeRaw = isset($input['calculation_mode']) ? strtolower(trim((string)$input['calculation_mode'])) : 'combined';
+    $calculationMode = in_array($calculationModeRaw, ['combined', 'multiplied'], true) ? $calculationModeRaw : 'combined';
 
     return [
         'name' => isset($input['name']) ? trim((string)$input['name']) : '',
@@ -283,6 +291,7 @@ function normalizeItemInput(array $input, array $schema)
         'unit' => isset($input['unit']) ? trim((string)$input['unit']) : '',
         'unit_conversion' => $qtyConversion,
         'level_conversion' => $levelConversion,
+        'calculation_mode' => $calculationMode,
         'daily_consumption' => isset($input['daily_consumption']) && is_numeric($input['daily_consumption']) ? round((float)$input['daily_consumption'], 1) : 0.0,
         'min_days_coverage' => isset($input['min_days_coverage']) && is_numeric($input['min_days_coverage']) ? (int)$input['min_days_coverage'] : 1,
         'description' => isset($input['description']) ? trim((string)$input['description']) : '',
@@ -316,6 +325,9 @@ function validateItemInput(array $normalized, array $schema)
     if ($normalized['level_conversion'] <= 0) {
         $errors[] = 'Faktor konversi level harus lebih dari 0.';
     }
+    if (!in_array($normalized['calculation_mode'], ['combined', 'multiplied'], true)) {
+        $errors[] = 'Mode perhitungan tidak valid.';
+    }
     if ($normalized['daily_consumption'] < 0) {
         $errors[] = 'Konsumsi harian tidak boleh negatif.';
     }
@@ -332,6 +344,10 @@ function validateItemInput(array $normalized, array $schema)
             }
         } elseif ($normalized['level_input'] !== '') {
             $errors[] = 'Level hanya boleh diisi jika mode level aktif.';
+        }
+
+        if ($normalized['has_level'] !== 1 && $normalized['calculation_mode'] === 'multiplied') {
+            $errors[] = 'Mode multiplied hanya boleh digunakan jika indikator level aktif.';
         }
     }
 
@@ -387,7 +403,8 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 (bool)$normalized['has_level'],
                 [
                     'level_conversion' => $normalized['level_conversion'],
-                    'qty_conversion' => $normalized['unit_conversion']
+                    'qty_conversion' => $normalized['unit_conversion'],
+                    'calculation_mode' => $normalized['calculation_mode']
                 ]
             );
             $daysCoverageNew = calculateDaysCoverage(
@@ -402,7 +419,8 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                     'category' => $normalized['category'],
                     'min_days_coverage' => $normalized['min_days_coverage'],
                     'level_conversion' => $normalized['level_conversion'],
-                    'qty_conversion' => $normalized['unit_conversion']
+                    'qty_conversion' => $normalized['unit_conversion'],
+                    'calculation_mode' => $normalized['calculation_mode']
                 ]
             );
             $statusNew = determineStatus($daysCoverageNew, $normalized['min_days_coverage']);
@@ -421,6 +439,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 'unit',
                 'unit_conversion',
                 'level_conversion',
+                'calculation_mode',
                 'daily_consumption',
                 'min_days_coverage',
                 'description',
@@ -434,6 +453,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 ':unit',
                 ':unit_conversion',
                 ':level_conversion',
+                ':calculation_mode',
                 ':daily_consumption',
                 ':min_days_coverage',
                 ':description',
@@ -449,6 +469,13 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 $insertPos = count($columns) - 1;
                 array_splice($columns, $insertPos, 0, 'calculation_type');
                 array_splice($placeholders, $insertPos, 0, ':calculation_type');
+            }
+            if (empty($schema['items_has_calculation_mode'])) {
+                $idx = array_search('calculation_mode', $columns, true);
+                if ($idx !== false) {
+                    array_splice($columns, $idx, 1);
+                    array_splice($placeholders, $idx, 1);
+                }
             }
             if (!empty($schema['items_has_level_value'])) {
                 array_splice($columns, 8, 0, 'level');
@@ -474,6 +501,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 ':unit' => $normalized['unit'],
                 ':unit_conversion' => $normalized['unit_conversion'],
                 ':level_conversion' => $normalized['level_conversion'],
+                ':calculation_mode' => $normalized['calculation_mode'],
                 ':daily_consumption' => $normalized['daily_consumption'],
                 ':min_days_coverage' => $normalized['min_days_coverage'],
                 ':description' => $normalized['description'],
@@ -483,6 +511,9 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
 
             if (empty($schema['items_has_level_conversion'])) {
                 unset($params[':level_conversion']);
+            }
+            if (empty($schema['items_has_calculation_mode'])) {
+                unset($params[':calculation_mode']);
             }
 
             if (!empty($schema['items_has_warehouse_stock'])) {
@@ -554,7 +585,8 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             (bool)$normalized['has_level'],
             [
                 'level_conversion' => $normalized['level_conversion'],
-                'qty_conversion' => $normalized['unit_conversion']
+                'qty_conversion' => $normalized['unit_conversion'],
+                'calculation_mode' => $normalized['calculation_mode']
             ]
         );
         $newDays = calculateDaysCoverage(
@@ -570,7 +602,8 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 'category' => $normalized['category'],
                 'min_days_coverage' => $normalized['min_days_coverage'],
                 'level_conversion' => $normalized['level_conversion'],
-                'qty_conversion' => $normalized['unit_conversion']
+                'qty_conversion' => $normalized['unit_conversion'],
+                'calculation_mode' => $normalized['calculation_mode']
             ]
         );
         $resolvedDaily = resolveDailyConsumption($normalized['daily_consumption'], [
@@ -588,6 +621,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             'unit = :unit',
             'unit_conversion = :unit_conversion',
             'level_conversion = :level_conversion',
+            'calculation_mode = :calculation_mode',
             'daily_consumption = :daily_consumption',
             'min_days_coverage = :min_days_coverage',
             'description = :description',
@@ -606,6 +640,12 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 array_splice($set, $idx, 1);
             }
         }
+        if (empty($schema['items_has_calculation_mode'])) {
+            $idx = array_search('calculation_mode = :calculation_mode', $set, true);
+            if ($idx !== false) {
+                array_splice($set, $idx, 1);
+            }
+        }
 
         $stmtUpdate = $pdo->prepare('UPDATE items SET ' . implode(', ', $set) . ' WHERE id = :id AND ' . activeItemsWhereSql());
         $updateParams = [
@@ -615,6 +655,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             ':unit' => $normalized['unit'],
             ':unit_conversion' => $normalized['unit_conversion'],
             ':level_conversion' => $normalized['level_conversion'],
+            ':calculation_mode' => $normalized['calculation_mode'],
             ':daily_consumption' => $normalized['daily_consumption'],
             ':min_days_coverage' => $normalized['min_days_coverage'],
             ':description' => $normalized['description'],
@@ -624,6 +665,9 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
         ];
         if (empty($schema['items_has_level_conversion'])) {
             unset($updateParams[':level_conversion']);
+        }
+        if (empty($schema['items_has_calculation_mode'])) {
+            unset($updateParams[':calculation_mode']);
         }
         if (!empty($schema['items_has_level_value'])) {
             $updateParams[':level'] = $normalized['level'];
@@ -641,7 +685,8 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             isset($old['has_level']) ? (bool)$old['has_level'] : false,
             [
                 'level_conversion' => isset($old['level_conversion']) ? (float)$old['level_conversion'] : (float)($old['unit_conversion'] ?? 1),
-                'qty_conversion' => (float)($old['unit_conversion'] ?? 1)
+                'qty_conversion' => (float)($old['unit_conversion'] ?? 1),
+                'calculation_mode' => isset($old['calculation_mode']) ? $old['calculation_mode'] : 'combined'
             ]
         );
         $oldHasLevel = isset($old['has_level']) ? (bool)$old['has_level'] : false;
@@ -658,7 +703,8 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 'category' => (string)($old['category'] ?? ''),
                 'min_days_coverage' => (int)($old['min_days_coverage'] ?? 1),
                 'level_conversion' => isset($old['level_conversion']) ? (float)$old['level_conversion'] : (float)($old['unit_conversion'] ?? 1),
-                'qty_conversion' => (float)($old['unit_conversion'] ?? 1)
+                'qty_conversion' => (float)($old['unit_conversion'] ?? 1),
+                'calculation_mode' => isset($old['calculation_mode']) ? $old['calculation_mode'] : 'combined'
             ]
         );
 

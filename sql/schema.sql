@@ -1,7 +1,7 @@
 -- --------------------------------------------------------
--- Host:                         127.0.0.1
--- Server version:               10.4.32-MariaDB - mariadb.org binary distribution
--- Server OS:                    Win64
+-- Host:                         srv1321.hstgr.io
+-- Server version:               11.8.3-MariaDB-log - MariaDB Server
+-- Server OS:                    Linux
 -- HeidiSQL Version:             12.11.0.7065
 -- --------------------------------------------------------
 
@@ -14,7 +14,14 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
--- Dumping structure for table stockmanager_test.access_log
+
+-- Dumping database structure for u471204330_stockmanager_2
+DROP DATABASE IF EXISTS `u471204330_stockmanager_2`;
+CREATE DATABASE IF NOT EXISTS `u471204330_stockmanager_2` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
+USE `u471204330_stockmanager_2`;
+
+-- Dumping structure for table u471204330_stockmanager_2.access_log
+DROP TABLE IF EXISTS `access_log`;
 CREATE TABLE IF NOT EXISTS `access_log` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
@@ -25,22 +32,22 @@ CREATE TABLE IF NOT EXISTS `access_log` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping structure for table stockmanager_test.items
+-- Data exporting was unselected.
+
+-- Dumping structure for table u471204330_stockmanager_2.items
+DROP TABLE IF EXISTS `items`;
 CREATE TABLE IF NOT EXISTS `items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(150) NOT NULL,
   `category` varchar(100) NOT NULL,
   `field_stock` int(11) NOT NULL DEFAULT 0,
-  -- DEPRECATED: warehouse_stock is no longer used by application logic (kept for backward compatibility)
-  `warehouse_stock` int(11) NOT NULL DEFAULT 0,
   `unit` varchar(20) NOT NULL DEFAULT '',
   `unit_conversion` decimal(12,4) NOT NULL DEFAULT 1.0000,
   `level_conversion` decimal(12,4) NOT NULL DEFAULT 1.0000,
+  `calculation_mode` enum('combined','multiplied') NOT NULL DEFAULT 'combined',
   `daily_consumption` decimal(12,4) NOT NULL DEFAULT 0.0000,
   `min_days_coverage` int(11) NOT NULL DEFAULT 1,
   `description` text DEFAULT NULL,
-  -- DEPRECATED: calculation_type is currently constant ('daily_consumption') and planned for cleanup
-  `calculation_type` varchar(30) NOT NULL DEFAULT 'daily_consumption',
   `level` int(11) DEFAULT NULL,
   `status` enum('in-stock','low-stock','warning-stock','out-stock') NOT NULL DEFAULT 'in-stock',
   `added_by` int(11) DEFAULT NULL,
@@ -57,9 +64,12 @@ CREATE TABLE IF NOT EXISTS `items` (
   CONSTRAINT `items_ibfk_1` FOREIGN KEY (`added_by`) REFERENCES `users` (`id`),
   CONSTRAINT `items_ibfk_2` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`),
   CONSTRAINT `items_ibfk_3` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping structure for table stockmanager_test.item_categories
+-- Data exporting was unselected.
+
+-- Dumping structure for table u471204330_stockmanager_2.item_categories
+DROP TABLE IF EXISTS `item_categories`;
 CREATE TABLE IF NOT EXISTS `item_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
@@ -69,19 +79,12 @@ CREATE TABLE IF NOT EXISTS `item_categories` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_item_categories_name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `item_categories` (`name`, `display_order`, `is_active`)
-SELECT * FROM (
-  SELECT 'Chemical' AS name, 10 AS display_order, 1 AS is_active
-  UNION ALL SELECT 'Lube Oil', 20, 1
-  UNION ALL SELECT 'Toothbelts', 30, 1
-) AS seed
-WHERE NOT EXISTS (
-  SELECT 1 FROM `item_categories` c WHERE c.name = seed.name
-);
+-- Data exporting was unselected.
 
--- Dumping structure for table stockmanager_test.item_stock_history
+-- Dumping structure for table u471204330_stockmanager_2.item_stock_history
+DROP TABLE IF EXISTS `item_stock_history`;
 CREATE TABLE IF NOT EXISTS `item_stock_history` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `item_id` int(11) NOT NULL,
@@ -90,9 +93,6 @@ CREATE TABLE IF NOT EXISTS `item_stock_history` (
   `action` varchar(20) NOT NULL,
   `field_stock_old` int(11) DEFAULT NULL,
   `field_stock_new` int(11) DEFAULT NULL,
-  -- DEPRECATED: warehouse_stock_* no longer populated with meaningful values (kept for historical compatibility)
-  `warehouse_stock_old` int(11) DEFAULT NULL,
-  `warehouse_stock_new` int(11) DEFAULT NULL,
   `status_old` varchar(20) DEFAULT NULL,
   `status_new` varchar(20) DEFAULT NULL,
   `total_stock_old` decimal(12,4) DEFAULT NULL,
@@ -110,10 +110,12 @@ CREATE TABLE IF NOT EXISTS `item_stock_history` (
   PRIMARY KEY (`id`),
   KEY `item_id` (`item_id`),
   CONSTRAINT `item_stock_history_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- DEPRECATED: legacy table, not used by current application flow (orphan candidate)
--- Dumping structure for table stockmanager_test.products
+-- Data exporting was unselected.
+
+-- Dumping structure for table u471204330_stockmanager_2.products
+DROP TABLE IF EXISTS `products`;
 CREATE TABLE IF NOT EXISTS `products` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
@@ -130,8 +132,8 @@ CREATE TABLE IF NOT EXISTS `products` (
 
 -- Data exporting was unselected.
 
--- DEPRECATED: legacy table, not used by current application flow (orphan candidate)
--- Dumping structure for table stockmanager_test.realtime_notifications
+-- Dumping structure for table u471204330_stockmanager_2.realtime_notifications
+DROP TABLE IF EXISTS `realtime_notifications`;
 CREATE TABLE IF NOT EXISTS `realtime_notifications` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `target_role` varchar(32) NOT NULL,
@@ -145,7 +147,8 @@ CREATE TABLE IF NOT EXISTS `realtime_notifications` (
 
 -- Data exporting was unselected.
 
--- Dumping structure for table stockmanager_test.units
+-- Dumping structure for table u471204330_stockmanager_2.units
+DROP TABLE IF EXISTS `units`;
 CREATE TABLE IF NOT EXISTS `units` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `value` varchar(50) NOT NULL,
@@ -156,11 +159,12 @@ CREATE TABLE IF NOT EXISTS `units` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `value` (`value`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Data exporting was unselected.
 
--- Dumping structure for table stockmanager_test.users
+-- Dumping structure for table u471204330_stockmanager_2.users
+DROP TABLE IF EXISTS `users`;
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
@@ -174,7 +178,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Data exporting was unselected.
 

@@ -14,6 +14,7 @@ foreach ($items as $item) {
     $unitConv = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1.0;
     $daily = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0.0;
     $levelConversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unitConv;
+    $calculationMode = isset($item['calculation_mode']) ? (string)$item['calculation_mode'] : 'combined';
     $minDays = isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1;
     $level = isset($item['level']) ? $item['level'] : null;
     $name = isset($item['name']) ? $item['name'] : null;
@@ -25,7 +26,8 @@ foreach ($items as $item) {
         'category' => $category,
         'min_days_coverage' => $minDays,
         'level_conversion' => $levelConversion,
-        'qty_conversion' => $unitConv
+        'qty_conversion' => $unitConv,
+        'calculation_mode' => $calculationMode
     ]);
     $status = determineStatus($days, $minDays);
 

@@ -33,10 +33,12 @@ $hasLevelCol = db_has_column('items', 'has_level');
 $levelSelect = $hasLevelCol ? ', i.has_level' : '';
 $hasLevelConversionCol = db_has_column('items', 'level_conversion');
 $levelConversionSelect = $hasLevelConversionCol ? ', i.level_conversion' : ', i.unit_conversion AS level_conversion';
+$hasCalculationModeCol = db_has_column('items', 'calculation_mode');
+$calculationModeSelect = $hasCalculationModeCol ? ', i.calculation_mode' : ", 'combined' AS calculation_mode";
 
 // Build query
 $query = "SELECT 
-           i.id, i.name, i.category, i.field_stock, i.unit_conversion{$levelConversionSelect}, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.last_updated, i.added_by as added_by_id, i.updated_by as updated_by_id,
+           i.id, i.name, i.category, i.field_stock, i.unit_conversion{$levelConversionSelect}{$calculationModeSelect}, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.last_updated, i.added_by as added_by_id, i.updated_by as updated_by_id,
            u.full_name as added_by_name,
            u2.full_name as updated_by_name{$levelSelect}
        FROM items i
@@ -216,13 +218,15 @@ $colspan = $colCount;
                             $level_conversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unit_conversion;
                             $daily_consumption = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0;
                             $level = array_key_exists('level', $item) ? $item['level'] : null;
+                            $calculation_mode = isset($item['calculation_mode']) ? (string)$item['calculation_mode'] : 'combined';
                             $status = isset($item['status']) ? (string)$item['status'] : '';
 
                             $hasLevel = isset($item['has_level']) ? (bool)$item['has_level'] : false;
 
                             $totalStock = calculateEffectiveStock($field_stock, $unit_conversion, $level, $hasLevel, [
                                 'level_conversion' => $level_conversion,
-                                'qty_conversion' => $unit_conversion
+                                'qty_conversion' => $unit_conversion,
+                                'calculation_mode' => $calculation_mode
                             ]);
                             $daysCoverage = calculateDaysCoverage(
                                 $field_stock,
@@ -237,7 +241,8 @@ $colspan = $colCount;
                                     'category' => $category,
                                     'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
                                     'level_conversion' => $level_conversion,
-                                    'qty_conversion' => $unit_conversion
+                                    'qty_conversion' => $unit_conversion,
+                                    'calculation_mode' => $calculation_mode
                                 ]
                             );
 

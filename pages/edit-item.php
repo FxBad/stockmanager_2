@@ -48,6 +48,7 @@ $formState = [
     'unit' => isset($item['unit']) ? (string)$item['unit'] : '',
     'unit_conversion' => isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1.0,
     'level_conversion' => isset($item['level_conversion']) ? (float)$item['level_conversion'] : (isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1.0),
+    'calculation_mode' => isset($item['calculation_mode']) ? (string)$item['calculation_mode'] : 'combined',
     'daily_consumption' => isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0.0,
     'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 7,
     'description' => isset($item['description']) ? (string)$item['description'] : '',
@@ -78,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'unit' => $result['data']['unit'],
             'unit_conversion' => $result['data']['unit_conversion'],
             'level_conversion' => $result['data']['level_conversion'],
+            'calculation_mode' => $result['data']['calculation_mode'],
             'daily_consumption' => $result['data']['daily_consumption'],
             'min_days_coverage' => $result['data']['min_days_coverage'],
             'description' => $result['data']['description'],
@@ -136,15 +138,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const hasLevelCb = document.getElementById('has_level');
             const levelGroup = document.getElementById('level-group');
             const levelConversionGroup = document.getElementById('level-group-conversion');
+            const levelModeGroup = document.getElementById('level-group-mode');
+            const calculationMode = document.getElementById('calculation_mode');
             if (hasLevelCb && levelGroup) {
                 hasLevelCb.addEventListener('change', function() {
                     if (this.checked) {
                         levelGroup.style.display = 'block';
                         if (levelConversionGroup) levelConversionGroup.style.display = 'block';
+                        if (levelModeGroup) levelModeGroup.style.display = 'block';
                     } else {
                         levelGroup.style.display = 'none';
                         if (levelConversionGroup) levelConversionGroup.style.display = 'none';
-                        // clear value if hidden? optional.
+                        if (levelModeGroup) levelModeGroup.style.display = 'none';
+                        if (calculationMode) calculationMode.value = 'combined';
                     }
                 });
             }

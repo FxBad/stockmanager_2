@@ -53,6 +53,14 @@ Untuk memisahkan perhitungan konversi stok berbasis jumlah dan berbasis level:
 - Menambahkan kolom baru: `items.level_conversion`
 - Form tambah/edit barang kini memiliki input terpisah untuk `unit_conversion` dan `level_conversion`.
 
+## Migrasi Mode Perhitungan Item (Penting)
+
+Untuk mendukung mode kalkulasi per item (`combined` dan `multiplied`):
+
+- Jalankan skrip: `sql/2026-02-14-add-calculation-mode.sql`
+- Menambahkan kolom baru: `items.calculation_mode`
+- Form tambah/edit barang kini memiliki dropdown mode perhitungan saat indikator level aktif.
+
 ## Status Deprecated (Per 2026-02-14)
 
 Elemen berikut telah ditetapkan sebagai **deprecated** dan dipertahankan sementara untuk kompatibilitas transisi:

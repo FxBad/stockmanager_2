@@ -18,13 +18,15 @@ $currentRole = currentUserRole();
 $isFieldUser = ($currentRole === 'field');
 $has_level_flag_column = db_has_column('items', 'has_level');
 $has_level_conversion_column = db_has_column('items', 'level_conversion');
+$has_calculation_mode_column = db_has_column('items', 'calculation_mode');
 $has_level_flag_select = $has_level_flag_column ? ', i.has_level' : '';
 $level_conversion_select = $has_level_conversion_column ? ', i.level_conversion' : ', i.unit_conversion AS level_conversion';
+$calculation_mode_select = $has_calculation_mode_column ? ', i.calculation_mode' : ", 'combined' AS calculation_mode";
 $categories = getItemCategories();
 
 // Fetch all active items (only needed columns) with error handling
 try {
-    $stmt = $pdo->query("SELECT i.id, i.name, i.category, i.field_stock, i.unit, i.unit_conversion{$level_conversion_select}, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.added_by AS added_by_id, u.username AS added_by_name{$has_level_flag_select}
+    $stmt = $pdo->query("SELECT i.id, i.name, i.category, i.field_stock, i.unit, i.unit_conversion{$level_conversion_select}{$calculation_mode_select}, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.added_by AS added_by_id, u.username AS added_by_name{$has_level_flag_select}
                             FROM items i
                             LEFT JOIN users u ON i.added_by = u.id
                             WHERE " . activeItemsWhereSql('i') . "
@@ -117,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $effectiveLevel = ($levelValue !== null) ? $levelValue : (isset($orig['level']) ? $orig['level'] : null);
             $levelConversion = isset($orig['level_conversion']) ? (float)$orig['level_conversion'] : (float)$orig['unit_conversion'];
+            $calculationMode = isset($orig['calculation_mode']) ? (string)$orig['calculation_mode'] : 'combined';
 
             // Warehouse stock removed from system
             $warehouseStock = 0;
@@ -137,7 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'category' => isset($orig['category']) ? $orig['category'] : '',
                     'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
                     'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion']
+                    'qty_conversion' => (float)$orig['unit_conversion'],
+                    'calculation_mode' => $calculationMode
                 ]
             );
 
@@ -184,7 +188,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $itemHasLevel,
                 [
                     'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion']
+                    'qty_conversion' => (float)$orig['unit_conversion'],
+                    'calculation_mode' => $calculationMode
                 ]
             );
             $totalNew = calculateEffectiveStock(
@@ -194,7 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $itemHasLevel,
                 [
                     'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion']
+                    'qty_conversion' => (float)$orig['unit_conversion'],
+                    'calculation_mode' => $calculationMode
                 ]
             );
             $daysOld = calculateDaysCoverage(
@@ -210,7 +216,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'category' => isset($orig['category']) ? $orig['category'] : '',
                     'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
                     'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion']
+                    'qty_conversion' => (float)$orig['unit_conversion'],
+                    'calculation_mode' => $calculationMode
                 ]
             );
             $daysNew = calculateDaysCoverage(
@@ -226,7 +233,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'category' => isset($orig['category']) ? $orig['category'] : '',
                     'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
                     'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion']
+                    'qty_conversion' => (float)$orig['unit_conversion'],
+                    'calculation_mode' => $calculationMode
                 ]
             );
 
