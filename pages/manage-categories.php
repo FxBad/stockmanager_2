@@ -214,8 +214,8 @@ try {
             <?php echo $message; ?>
         <?php endif; ?>
 
-        <div class="categories-header-actions modal-header-actions">
-            <button type="button" class="btn-add-category btn-modal-add" onclick="openAddCategoryModal()">
+        <div class="modal-header-actions">
+            <button type="button" class="btn-modal-add" onclick="openAddCategoryModal()">
                 <i class='bx bx-plus'></i> Tambah Kategori
             </button>
         </div>
@@ -285,13 +285,13 @@ try {
             </table>
         </div>
 
-        <div class="category-modal-overlay app-modal-overlay" id="add-category-modal" onclick="closeCategoryModalOnBackdrop(event, 'add-category-modal')">
-            <div class="category-modal app-modal app-modal--category" role="dialog" aria-modal="true" aria-labelledby="add-category-modal-title">
-                <div class="category-modal-header app-modal-header">
+        <div class="app-modal-overlay" id="add-category-modal" onclick="closeCategoryModalOnBackdrop(event, 'add-category-modal')">
+            <div class="app-modal app-modal--category" role="dialog" aria-modal="true" aria-labelledby="add-category-modal-title">
+                <div class="app-modal-header">
                     <h3 id="add-category-modal-title">Tambah Kategori</h3>
-                    <button type="button" class="category-modal-close app-modal-close" onclick="closeCategoryModal('add-category-modal')">&times;</button>
+                    <button type="button" class="app-modal-close" onclick="closeCategoryModal('add-category-modal')">&times;</button>
                 </div>
-                <div class="category-modal-body app-modal-body">
+                <div class="app-modal-body">
                     <form method="POST" class="add-form" id="add-category-form">
                         <input type="hidden" name="action" value="create_category">
 
@@ -320,13 +320,13 @@ try {
             </div>
         </div>
 
-        <div class="category-modal-overlay app-modal-overlay" id="edit-category-modal" onclick="closeCategoryModalOnBackdrop(event, 'edit-category-modal')">
-            <div class="category-modal app-modal app-modal--category" role="dialog" aria-modal="true" aria-labelledby="edit-category-modal-title">
-                <div class="category-modal-header app-modal-header">
+        <div class="app-modal-overlay" id="edit-category-modal" onclick="closeCategoryModalOnBackdrop(event, 'edit-category-modal')">
+            <div class="app-modal app-modal--category" role="dialog" aria-modal="true" aria-labelledby="edit-category-modal-title">
+                <div class="app-modal-header">
                     <h3 id="edit-category-modal-title">Edit Kategori</h3>
-                    <button type="button" class="category-modal-close app-modal-close" onclick="closeCategoryModal('edit-category-modal')">&times;</button>
+                    <button type="button" class="app-modal-close" onclick="closeCategoryModal('edit-category-modal')">&times;</button>
                 </div>
-                <div class="category-modal-body app-modal-body">
+                <div class="app-modal-body">
                     <form method="POST" class="add-form" id="edit-category-form">
                         <input type="hidden" name="action" value="update_category">
                         <input type="hidden" id="edit_category_id" name="category_id" value="<?php echo htmlspecialchars((string)$editFormState['category_id']); ?>">

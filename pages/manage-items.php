@@ -217,8 +217,8 @@ try {
             <?php echo $message; ?>
         <?php endif; ?>
 
-        <div class="items-header-actions modal-header-actions">
-            <button type="button" class="btn-add-item btn-modal-add" onclick="openAddItemModal()">
+        <div class="modal-header-actions">
+            <button type="button" class="btn-modal-add" onclick="openAddItemModal()">
                 <i class='bx bx-plus'></i> Tambah Barang
             </button>
         </div>
@@ -380,13 +380,13 @@ try {
             </table>
         </div>
 
-        <div class="item-modal-overlay app-modal-overlay" id="add-item-modal" onclick="closeItemModalOnBackdrop(event, 'add-item-modal')">
-            <div class="item-modal app-modal app-modal--item" role="dialog" aria-modal="true" aria-labelledby="add-item-modal-title">
-                <div class="item-modal-header app-modal-header">
+        <div class="app-modal-overlay" id="add-item-modal" onclick="closeItemModalOnBackdrop(event, 'add-item-modal')">
+            <div class="app-modal app-modal--item" role="dialog" aria-modal="true" aria-labelledby="add-item-modal-title">
+                <div class="app-modal-header">
                     <h3 id="add-item-modal-title">Tambah Barang</h3>
-                    <button type="button" class="item-modal-close app-modal-close" onclick="closeItemModal('add-item-modal')">&times;</button>
+                    <button type="button" class="app-modal-close" onclick="closeItemModal('add-item-modal')">&times;</button>
                 </div>
-                <div class="item-modal-body app-modal-body">
+                <div class="app-modal-body">
                     <form method="POST" class="add-form" id="add-item-form">
                         <input type="hidden" name="action" value="create_item">
                         <?php
@@ -407,13 +407,13 @@ try {
             </div>
         </div>
 
-        <div class="item-modal-overlay app-modal-overlay" id="edit-item-modal" onclick="closeItemModalOnBackdrop(event, 'edit-item-modal')">
-            <div class="item-modal app-modal app-modal--item" role="dialog" aria-modal="true" aria-labelledby="edit-item-modal-title">
-                <div class="item-modal-header app-modal-header">
+        <div class="app-modal-overlay" id="edit-item-modal" onclick="closeItemModalOnBackdrop(event, 'edit-item-modal')">
+            <div class="app-modal app-modal--item" role="dialog" aria-modal="true" aria-labelledby="edit-item-modal-title">
+                <div class="app-modal-header">
                     <h3 id="edit-item-modal-title">Edit Barang</h3>
-                    <button type="button" class="item-modal-close app-modal-close" onclick="closeItemModal('edit-item-modal')">&times;</button>
+                    <button type="button" class="app-modal-close" onclick="closeItemModal('edit-item-modal')">&times;</button>
                 </div>
-                <div class="item-modal-body app-modal-body">
+                <div class="app-modal-body">
                     <form method="POST" class="add-form" id="edit-item-form">
                         <input type="hidden" name="action" value="update_item">
                         <input type="hidden" id="edit_item_id" name="item_id" value="<?php echo htmlspecialchars((string)$editItemState['item_id']); ?>">

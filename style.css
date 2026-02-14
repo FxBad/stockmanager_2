@@ -3371,17 +3371,13 @@ table th i {
 	color: #f39c12;
 }
 
-.modal-header-actions,
-.items-header-actions,
-.categories-header-actions {
+.modal-header-actions {
 	display: flex;
 	justify-content: flex-end;
 	margin-bottom: 12px;
 }
 
-.btn-modal-add,
-.btn-add-item,
-.btn-add-category {
+.btn-modal-add {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -3394,15 +3390,11 @@ table th i {
 	font-weight: 600;
 }
 
-.btn-modal-add:hover,
-.btn-add-item:hover,
-.btn-add-category:hover {
+.btn-modal-add:hover {
 	background-color: var(--hunter-green);
 }
 
-.app-modal-overlay,
-.item-modal-overlay,
-.category-modal-overlay {
+.app-modal-overlay {
 	position: fixed;
 	inset: 0;
 	background: rgba(0, 0, 0, 0.4);
@@ -3413,15 +3405,11 @@ table th i {
 	padding: 16px;
 }
 
-.app-modal-overlay.show,
-.item-modal-overlay.show,
-.category-modal-overlay.show {
+.app-modal-overlay.show {
 	display: flex;
 }
 
-.app-modal,
-.item-modal,
-.category-modal {
+.app-modal {
 	width: 100%;
 	max-height: 90vh;
 	overflow-y: auto;
@@ -3431,19 +3419,15 @@ table th i {
 	overflow: hidden;
 }
 
-.app-modal--item,
-.item-modal {
+.app-modal--item {
 	max-width: 640px;
 }
 
-.app-modal--category,
-.category-modal {
+.app-modal--category {
 	max-width: 520px;
 }
 
-.app-modal-header,
-.item-modal-header,
-.category-modal-header {
+.app-modal-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -3451,16 +3435,12 @@ table th i {
 	border-bottom: 1px solid #eee;
 }
 
-.app-modal-header h3,
-.item-modal-header h3,
-.category-modal-header h3 {
+.app-modal-header h3 {
 	margin: 0;
 	font-size: 1.05rem;
 }
 
-.app-modal-close,
-.item-modal-close,
-.category-modal-close {
+.app-modal-close {
 	border: none;
 	background: transparent;
 	color: #666;
@@ -3468,65 +3448,48 @@ table th i {
 	cursor: pointer;
 }
 
-.app-modal-body,
-.item-modal-body,
-.category-modal-body {
+.app-modal-body {
 	padding: 16px;
 }
 
 /* Mobile optimization for modal */
 @media screen and (max-width: 420px) {
-	.modal-header-actions,
-	.items-header-actions,
-	.categories-header-actions {
+	.modal-header-actions {
 		justify-content: stretch;
 	}
 
-	.btn-modal-add,
-	.btn-add-item {
+	.btn-modal-add {
 		width: 100%;
 		justify-content: center;
 		padding: 10px 12px;
 		font-size: 0.95rem;
 	}
 
-	.app-modal-overlay,
-	.item-modal-overlay,
-	.category-modal-overlay {
+	.app-modal-overlay {
 		padding: 10px;
 		align-items: flex-end;
 	}
 
-	.app-modal,
-	.item-modal,
-	.category-modal {
+	.app-modal {
 		max-width: 100%;
 		max-height: 92vh;
 		border-radius: 12px 12px 0 0;
 	}
 
-	.app-modal-header,
-	.item-modal-header,
-	.category-modal-header {
+	.app-modal-header {
 		padding: 12px 14px;
 	}
 
-	.app-modal-header h3,
-	.item-modal-header h3,
-	.category-modal-header h3 {
+	.app-modal-header h3 {
 		font-size: 1rem;
 	}
 
-	.app-modal-close,
-	.item-modal-close,
-	.category-modal-close {
+	.app-modal-close {
 		font-size: 1.1rem;
 		padding: 6px;
 	}
 
-	.app-modal-body,
-	.item-modal-body,
-	.category-modal-body {
+	.app-modal-body {
 		padding: 14px;
 	}
 
@@ -3578,47 +3541,34 @@ table th i {
 }
 
 @media screen and (max-width: 400px) {
-	.btn-modal-add,
-	.btn-add-item {
+	.btn-modal-add {
 		padding: 9px 10px;
 		font-size: 0.9rem;
 	}
 
-	.app-modal-overlay,
-	.item-modal-overlay,
-	.category-modal-overlay {
+	.app-modal-overlay {
 		padding: 8px;
 	}
 
-	.app-modal,
-	.item-modal,
-	.category-modal {
+	.app-modal {
 		max-height: 94vh;
 		border-radius: 10px 10px 0 0;
 	}
 
-	.app-modal-header,
-	.item-modal-header,
-	.category-modal-header {
+	.app-modal-header {
 		padding: 10px 12px;
 	}
 
-	.app-modal-header h3,
-	.item-modal-header h3,
-	.category-modal-header h3 {
+	.app-modal-header h3 {
 		font-size: 0.95rem;
 	}
 
-	.app-modal-close,
-	.item-modal-close,
-	.category-modal-close {
+	.app-modal-close {
 		font-size: 1rem;
 		padding: 5px;
 	}
 
-	.app-modal-body,
-	.item-modal-body,
-	.category-modal-body {
+	.app-modal-body {
 		padding: 12px;
 	}
 
