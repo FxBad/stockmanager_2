@@ -91,7 +91,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	function openOrTogglePreview(toggleButton) {
 		if (!toggleButton) return;
 		const previewId = toggleButton.dataset.previewTarget || "";
-		const previewRow = previewId ? document.getElementById(previewId) : null;
+		const previewRow = previewId
+			? document.getElementById(previewId)
+			: null;
 		if (!previewRow) return;
 
 		if (previewRow.hidden) {
@@ -146,7 +148,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		if (event.key === "ArrowRight") {
 			event.preventDefault();
-			const nextBtn = currentButtons[currentIndex + 1] || currentButtons[0];
+			const nextBtn =
+				currentButtons[currentIndex + 1] || currentButtons[0];
 			if (nextBtn) nextBtn.focus();
 			return;
 		}
@@ -173,7 +176,8 @@ document.addEventListener("DOMContentLoaded", function () {
 					: Math.max(0, rowIndex - 1);
 			const targetButtons = getRowActionButtons(rows[targetIndex]);
 			const targetBtn =
-				targetButtons[currentIndex] || targetButtons[targetButtons.length - 1];
+				targetButtons[currentIndex] ||
+				targetButtons[targetButtons.length - 1];
 			if (targetBtn) targetBtn.focus();
 		}
 	});
