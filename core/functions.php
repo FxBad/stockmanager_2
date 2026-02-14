@@ -879,3 +879,32 @@ function getUnits()
         return [];
     }
 }
+
+function getItemCategories()
+{
+    if (!isset($GLOBALS['pdo']) || !$GLOBALS['pdo'] instanceof PDO) return [];
+
+    try {
+        $sql = "SELECT DISTINCT category FROM items WHERE category IS NOT NULL AND category != ''";
+        if (itemsSoftDeleteEnabled()) {
+            $sql .= " AND " . activeItemsWhereSql();
+        }
+        $sql .= " ORDER BY category";
+
+        $stmt = $GLOBALS['pdo']->prepare($sql);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(function ($value) {
+            return trim((string)$value);
+        }, $rows), function ($value) {
+            return $value !== '';
+        }));
+    } catch (Exception $e) {
+        return [];
+    }
+}

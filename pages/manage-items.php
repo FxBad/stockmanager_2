@@ -9,6 +9,7 @@ requireRole(['office', 'admin']);
 
 $message = '';
 $units = getUnits();
+$itemCategories = getItemCategories();
 
 $itemsHasLevelFlag = db_has_column('items', 'has_level');
 $itemsHasLevelValue = db_has_column('items', 'level');
@@ -464,73 +465,15 @@ try {
                 <div class="item-modal-body">
                     <form method="POST" class="add-form" id="add-item-form">
                         <input type="hidden" name="action" value="create_item">
-
-                        <div class="form-group">
-                            <label for="add_name">Nama Barang</label>
-                            <input type="text" id="add_name" name="name" value="<?php echo htmlspecialchars((string)$addItemState['name']); ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="add_category">Kategori</label>
-                            <select id="add_category" name="category" required>
-                                <option value="">Pilih Kategori</option>
-                                <option value="Chemical" <?php echo $addItemState['category'] === 'Chemical' ? 'selected' : ''; ?>>Chemical</option>
-                                <option value="Lube Oil" <?php echo $addItemState['category'] === 'Lube Oil' ? 'selected' : ''; ?>>Lube Oil</option>
-                                <option value="Toothbelts" <?php echo $addItemState['category'] === 'Toothbelts' ? 'selected' : ''; ?>>Toothbelts</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="add_field_stock">Stok</label>
-                            <input type="number" id="add_field_stock" name="field_stock" min="0" value="<?php echo (int)$addItemState['field_stock']; ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="add_unit">Satuan</label>
-                            <select id="add_unit" name="unit" required>
-                                <?php if (empty($units)): ?>
-                                    <option value="" disabled selected>Belum ada kategori unit</option>
-                                <?php else: ?>
-                                    <?php foreach ($units as $unitOption): ?>
-                                        <option value="<?php echo htmlspecialchars($unitOption['value']); ?>" <?php echo $addItemState['unit'] === $unitOption['value'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($unitOption['label']); ?></option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="add_unit_conversion">Faktor Konversi Satuan</label>
-                            <input type="number" id="add_unit_conversion" name="unit_conversion" min="0.1" step="0.1" value="<?php echo number_format((float)$addItemState['unit_conversion'], 1, '.', ''); ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="add_daily_consumption">Konsumsi Harian</label>
-                            <input type="number" id="add_daily_consumption" name="daily_consumption" min="0" step="0.1" value="<?php echo number_format((float)$addItemState['daily_consumption'], 1, '.', ''); ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="add_min_days_coverage">Minimum Periode (hari)</label>
-                            <input type="number" id="add_min_days_coverage" name="min_days_coverage" min="1" value="<?php echo (int)$addItemState['min_days_coverage']; ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="add_description">Keterangan</label>
-                            <textarea id="add_description" name="description" rows="3"><?php echo htmlspecialchars((string)$addItemState['description']); ?></textarea>
-                        </div>
-
-                        <?php if ($itemsHasLevelFlag): ?>
-                            <div class="form-group">
-                                <label for="add_has_level">
-                                    <input type="checkbox" id="add_has_level" name="has_level" value="1" <?php echo (int)$addItemState['has_level'] === 1 ? 'checked' : ''; ?>>
-                                    Gunakan indikator level untuk kalkulasi ketahanan
-                                </label>
-                            </div>
-                        <?php endif; ?>
-
-                        <div class="form-group" id="add-level-group" style="<?php echo (int)$addItemState['has_level'] === 1 ? '' : 'display:none;'; ?>">
-                            <label for="add_level">Level (cm)</label>
-                            <input type="number" id="add_level" name="level" min="0" step="1" value="<?php echo htmlspecialchars((string)$addItemState['level']); ?>">
-                        </div>
+                        <?php
+                        $formPrefix = 'add_';
+                        $formState = $addItemState;
+                        $formUnits = $units;
+                        $formCategories = $itemCategories;
+                        $formShowLevel = $itemsHasLevelFlag;
+                        $formLevelGroupId = 'add-level-group';
+                        include __DIR__ . '/../shared/item-form-fields.php';
+                        ?>
 
                         <div class="form-actions">
                             <button type="submit" class="btn-submit">Simpan Barang</button>
@@ -550,72 +493,15 @@ try {
                     <form method="POST" class="add-form" id="edit-item-form">
                         <input type="hidden" name="action" value="update_item">
                         <input type="hidden" id="edit_item_id" name="item_id" value="<?php echo htmlspecialchars((string)$editItemState['item_id']); ?>">
-
-                        <div class="form-group">
-                            <label for="edit_name">Nama Barang</label>
-                            <input type="text" id="edit_name" name="name" value="<?php echo htmlspecialchars((string)$editItemState['name']); ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit_category">Kategori</label>
-                            <select id="edit_category" name="category" required>
-                                <option value="Chemical" <?php echo $editItemState['category'] === 'Chemical' ? 'selected' : ''; ?>>Chemical</option>
-                                <option value="Lube Oil" <?php echo $editItemState['category'] === 'Lube Oil' ? 'selected' : ''; ?>>Lube Oil</option>
-                                <option value="Toothbelts" <?php echo $editItemState['category'] === 'Toothbelts' ? 'selected' : ''; ?>>Toothbelts</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit_field_stock">Stok</label>
-                            <input type="number" id="edit_field_stock" name="field_stock" min="0" value="<?php echo (int)$editItemState['field_stock']; ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit_unit">Satuan</label>
-                            <select id="edit_unit" name="unit" required>
-                                <?php if (empty($units)): ?>
-                                    <option value="" disabled selected>Belum ada kategori unit</option>
-                                <?php else: ?>
-                                    <?php foreach ($units as $unitOption): ?>
-                                        <option value="<?php echo htmlspecialchars($unitOption['value']); ?>" <?php echo $editItemState['unit'] === $unitOption['value'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($unitOption['label']); ?></option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit_unit_conversion">Faktor Konversi Satuan</label>
-                            <input type="number" id="edit_unit_conversion" name="unit_conversion" min="0.1" step="0.1" value="<?php echo number_format((float)$editItemState['unit_conversion'], 1, '.', ''); ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit_daily_consumption">Konsumsi Harian</label>
-                            <input type="number" id="edit_daily_consumption" name="daily_consumption" min="0" step="0.1" value="<?php echo number_format((float)$editItemState['daily_consumption'], 1, '.', ''); ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit_min_days_coverage">Minimum Periode (hari)</label>
-                            <input type="number" id="edit_min_days_coverage" name="min_days_coverage" min="1" value="<?php echo (int)$editItemState['min_days_coverage']; ?>" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="edit_description">Keterangan</label>
-                            <textarea id="edit_description" name="description" rows="3"><?php echo htmlspecialchars((string)$editItemState['description']); ?></textarea>
-                        </div>
-
-                        <?php if ($itemsHasLevelFlag): ?>
-                            <div class="form-group">
-                                <label for="edit_has_level">
-                                    <input type="checkbox" id="edit_has_level" name="has_level" value="1" <?php echo (int)$editItemState['has_level'] === 1 ? 'checked' : ''; ?>>
-                                    Gunakan indikator level untuk kalkulasi ketahanan
-                                </label>
-                            </div>
-                        <?php endif; ?>
-
-                        <div class="form-group" id="edit-level-group" style="<?php echo (int)$editItemState['has_level'] === 1 ? '' : 'display:none;'; ?>">
-                            <label for="edit_level">Level (cm)</label>
-                            <input type="number" id="edit_level" name="level" min="0" step="1" value="<?php echo htmlspecialchars((string)$editItemState['level']); ?>">
-                        </div>
+                        <?php
+                        $formPrefix = 'edit_';
+                        $formState = $editItemState;
+                        $formUnits = $units;
+                        $formCategories = $itemCategories;
+                        $formShowLevel = $itemsHasLevelFlag;
+                        $formLevelGroupId = 'edit-level-group';
+                        include __DIR__ . '/../shared/item-form-fields.php';
+                        ?>
 
                         <div class="form-actions">
                             <button type="submit" class="btn-submit">Simpan Perubahan</button>

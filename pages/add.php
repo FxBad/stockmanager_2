@@ -9,7 +9,21 @@ requireRole(['office', 'admin']);
 
 // Fetch units from database
 $units = getUnits();
+$categories = getItemCategories();
 $hasLevelColumn = db_has_column('items', 'has_level');
+
+$formState = [
+    'name' => '',
+    'category' => '',
+    'field_stock' => 0,
+    'unit' => '',
+    'unit_conversion' => 1.0,
+    'daily_consumption' => 0.0,
+    'min_days_coverage' => 7,
+    'description' => '',
+    'has_level' => 0,
+    'level' => '',
+];
 
 $message = '';
 
@@ -19,6 +33,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($result['success']) {
         header('Location: manage-items.php?success=1');
         exit;
+    }
+
+    if (!empty($result['data']) && is_array($result['data'])) {
+        $formState = [
+            'name' => $result['data']['name'],
+            'category' => $result['data']['category'],
+            'field_stock' => $result['data']['field_stock'],
+            'unit' => $result['data']['unit'],
+            'unit_conversion' => $result['data']['unit_conversion'],
+            'daily_consumption' => $result['data']['daily_consumption'],
+            'min_days_coverage' => $result['data']['min_days_coverage'],
+            'description' => $result['data']['description'],
+            'has_level' => $result['data']['has_level'],
+            'level' => $result['data']['level_input'],
+        ];
     }
 
     if (!empty($result['errors'])) {
@@ -65,75 +94,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form method="POST" class="add-form">
-                <div class="form-group">
-                    <label for="name">Nama Barang</label>
-                    <input type="text" id="name" name="name" required>
+                <?php
+                $formPrefix = '';
+                $formUnits = $units;
+                $formCategories = $categories;
+                $formShowLevel = $hasLevelColumn;
+                $formLevelGroupId = 'level-group';
+                include __DIR__ . '/../shared/item-form-fields.php';
+                ?>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">Simpan Barang</button>
+                    <a href="manage-items.php" class="btn-cancel">Batal</a>
                 </div>
-
-                <div class="form-group">
-                    <label for="category">Kategori</label>
-                    <select id="category" name="category" required>
-                        <option value="">Pilih Kategori</option>
-                        <option value="Chemical">Chemical</option>
-                        <option value="Lube Oil">Lube Oil</option>
-                        <option value="Toothbelts">Toothbelts</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="field_stock">Stok</label>
-                    <input type="number" id="field_stock" name="field_stock" min="0" value="0" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="unit">Satuan</label>
-                    <select id="unit" name="unit" required>
-                        <?php if (empty($units)): ?>
-                            <option value="" disabled selected>Belum ada kategori unit</option>
-                        <?php else: ?>
-                            <?php foreach ($units as $unit): ?>
-                                <option value="<?php echo htmlspecialchars($unit['value']); ?>"><?php echo htmlspecialchars($unit['label']); ?></option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
-                    <div class="form-group">
-                        <label for="unit_conversion">Faktor Konversi Satuan</label>
-                        <input type="number" id="unit_conversion" name="unit_conversion" min="0.1" step="0.1" value="1.0" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="daily_consumption">Konsumsi Harian</label>
-                        <input type="number" id="daily_consumption" name="daily_consumption" min="0" step="0.1" value="0.0" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="min_days_coverage">Minimum Periode (hari)</label>
-                        <input type="number" id="min_days_coverage" name="min_days_coverage" min="1" value="7" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="description">Keterangan</label>
-                        <textarea id="description" name="description" rows="3"></textarea>
-                    </div>
-
-                    <?php if ($hasLevelColumn): ?>
-                        <div class="form-group">
-                            <label for="has_level">
-                                <input type="checkbox" id="has_level" name="has_level" value="1">
-                                Gunakan indikator level untuk kalkulasi ketahanan
-                            </label>
-                        </div>
-                    <?php endif; ?>
-
-                    <div class="form-group" id="level-group" style="display:none;">
-                        <label for="level">Level (cm)</label>
-                        <input type="number" id="level" name="level" min="0" step="1" value="">
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" class="btn-submit">Simpan Barang</button>
-                        <a href="manage-items.php" class="btn-cancel">Batal</a>
-                    </div>
             </form>
         </div>
     </main>

@@ -35,10 +35,24 @@ try {
 
 // Fetch units from database
 $units = getUnits();
+$categories = getItemCategories();
 
 // Cache column checks
 $includeLevel = db_has_column('items', 'level');
 $includeHasLevel = db_has_column('items', 'has_level');
+
+$formState = [
+    'name' => isset($item['name']) ? (string)$item['name'] : '',
+    'category' => isset($item['category']) ? (string)$item['category'] : '',
+    'field_stock' => isset($item['field_stock']) ? (int)$item['field_stock'] : 0,
+    'unit' => isset($item['unit']) ? (string)$item['unit'] : '',
+    'unit_conversion' => isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1.0,
+    'daily_consumption' => isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0.0,
+    'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 7,
+    'description' => isset($item['description']) ? (string)$item['description'] : '',
+    'has_level' => isset($item['has_level']) ? (int)$item['has_level'] : 0,
+    'level' => isset($item['level']) ? (string)$item['level'] : '',
+];
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -56,20 +70,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($result['data']) && is_array($result['data'])) {
-        $item['name'] = $result['data']['name'];
-        $item['category'] = $result['data']['category'];
-        $item['field_stock'] = $result['data']['field_stock'];
-        $item['unit'] = $result['data']['unit'];
-        $item['unit_conversion'] = $result['data']['unit_conversion'];
-        $item['daily_consumption'] = $result['data']['daily_consumption'];
-        $item['min_days_coverage'] = $result['data']['min_days_coverage'];
-        $item['description'] = $result['data']['description'];
-        if ($includeHasLevel) {
-            $item['has_level'] = $result['data']['has_level'];
-        }
-        if ($includeLevel) {
-            $item['level'] = $result['data']['level_input'];
-        }
+        $formState = [
+            'name' => $result['data']['name'],
+            'category' => $result['data']['category'],
+            'field_stock' => $result['data']['field_stock'],
+            'unit' => $result['data']['unit'],
+            'unit_conversion' => $result['data']['unit_conversion'],
+            'daily_consumption' => $result['data']['daily_consumption'],
+            'min_days_coverage' => $result['data']['min_days_coverage'],
+            'description' => $result['data']['description'],
+            'has_level' => $result['data']['has_level'],
+            'level' => $result['data']['level_input'],
+        ];
     }
 }
 ?>
@@ -99,73 +111,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form method="POST" class="add-form">
-                <div class="form-group">
-                    <label for="name">Nama Barang</label>
-                    <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($item['name']); ?>" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="category">Kategori</label>
-                    <select id="category" name="category" required>
-                        <option value="Chemical" <?php echo $item['category'] === 'Chemical' ? 'selected' : ''; ?>>Chemical</option>
-                        <option value="Lube Oil" <?php echo $item['category'] === 'Lube Oil' ? 'selected' : ''; ?>>Lube Oil</option>
-                        <option value="Toothbelts" <?php echo $item['category'] === 'Toothbelts' ? 'selected' : ''; ?>>Toothbelts</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="field_stock">Stok</label>
-                    <input type="number" id="field_stock" name="field_stock" value="<?php echo $item['field_stock']; ?>" min="0" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="unit">Satuan</label>
-                    <select id="unit" name="unit" required>
-                        <?php if (empty($units)): ?>
-                            <option value="" disabled>Belum ada kategori</option>
-                            <option value="<?php echo htmlspecialchars($item['unit']); ?>" selected><?php echo htmlspecialchars($item['unit']); ?></option>
-                        <?php else: ?>
-                            <?php foreach ($units as $unit): ?>
-                                <option value="<?php echo htmlspecialchars($unit['value']); ?>" <?php echo $item['unit'] === $unit['value'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($unit['label']); ?></option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="unit_conversion">Faktor Konversi Satuan</label>
-                    <input type="number" id="unit_conversion" name="unit_conversion" value="<?php echo number_format((float)$item['unit_conversion'], 1, '.', ''); ?>" min="0.1" step="0.1" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="daily_consumption">Konsumsi Harian</label>
-                    <input type="number" id="daily_consumption" name="daily_consumption" value="<?php echo number_format((float)$item['daily_consumption'], 1, '.', ''); ?>" min="0" step="0.1" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="min_days_coverage">Minimum Periode (hari)</label>
-                    <input type="number" id="min_days_coverage" name="min_days_coverage" value="<?php echo $item['min_days_coverage']; ?>" min="1" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="description">Keterangan</label>
-                    <textarea id="description" name="description" rows="3"><?php echo htmlspecialchars($item['description']); ?></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="has_level">
-                        <?php
-                        $hasLvl = (!empty($item['has_level']) || (strtoupper(trim($item['name'])) === 'DMDS'));
-                        ?>
-                        <input type="checkbox" id="has_level" name="has_level" <?php echo $hasLvl ? 'checked' : ''; ?>>
-                        Mode Level (Perhitungan stok berdasarkan ketinggian cm)
-                    </label>
-                </div>
-
-                <div class="form-group" id="level-group" style="<?php echo $hasLvl ? '' : 'display:none;'; ?>">
-                    <label for="level">Level (cm)</label>
-                    <input type="number" id="level" name="level" min="0" step="1" value="<?php echo isset($item['level']) ? (int)$item['level'] : ''; ?>">
-                </div>
+                <?php
+                $formPrefix = '';
+                $formUnits = $units;
+                $formCategories = $categories;
+                $formShowLevel = $includeHasLevel;
+                $formLevelGroupId = 'level-group';
+                include __DIR__ . '/../shared/item-form-fields.php';
+                ?>
 
                 <div class="form-actions">
                     <button type="submit" class="btn-submit">Simpan Perubahan</button>
