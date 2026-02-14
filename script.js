@@ -61,20 +61,24 @@ document.addEventListener("DOMContentLoaded", function () {
 	let activeFilter = "all";
 
 	function applyDashboardFilters() {
-		const searchValue = (searchInput && searchInput.value
-			? searchInput.value
-			: ""
+		const searchValue = (
+			searchInput && searchInput.value ? searchInput.value : ""
 		)
 			.toString()
 			.trim()
 			.toLowerCase();
 
 		rows.forEach((row) => {
-			const status = (row.getAttribute("data-status") || "").toLowerCase();
+			const status = (
+				row.getAttribute("data-status") || ""
+			).toLowerCase();
 			const isCritical = row.getAttribute("data-critical") === "1";
-			const searchable = (row.getAttribute("data-search") || "").toLowerCase();
+			const searchable = (
+				row.getAttribute("data-search") || ""
+			).toLowerCase();
 
-			const matchesSearch = !searchValue || searchable.indexOf(searchValue) !== -1;
+			const matchesSearch =
+				!searchValue || searchable.indexOf(searchValue) !== -1;
 
 			let matchesFilter = true;
 			if (activeFilter === "critical") {
