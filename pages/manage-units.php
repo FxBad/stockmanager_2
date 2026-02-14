@@ -131,6 +131,79 @@ try {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <style>
+        .units-header-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+
+        .btn-add-unit {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 10px 14px;
+            background-color: var(--fern-green);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .btn-add-unit:hover {
+            background-color: var(--hunter-green);
+        }
+
+        .unit-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .unit-modal-overlay.show {
+            display: flex;
+        }
+
+        .unit-modal {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+
+        .unit-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .unit-modal-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        .unit-modal-close {
+            border: none;
+            background: transparent;
+            color: #666;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .unit-modal-body {
+            padding: 16px;
+        }
+    </style>
 </head>
 
 <body>
@@ -145,28 +218,10 @@ try {
             <?php echo $message; ?>
         <?php endif; ?>
 
-        <div class="table-container" style="margin-bottom: 20px;">
-            <div class="table-header">
-                <h3>Tambah Satuan</h3>
-            </div>
-            <form method="POST" class="add-form">
-                <input type="hidden" name="action" value="create_unit">
-                <div class="form-group">
-                    <label for="value">Value (unik)</label>
-                    <input type="text" id="value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" placeholder="contoh: drum" required>
-                </div>
-                <div class="form-group">
-                    <label for="label">Label</label>
-                    <input type="text" id="label" name="label" maxlength="100" placeholder="contoh: Drum" required>
-                </div>
-                <div class="form-group">
-                    <label for="display_order">Urutan Tampil</label>
-                    <input type="number" id="display_order" name="display_order" min="0" max="9999" value="0" required>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-submit">Simpan Satuan</button>
-                </div>
-            </form>
+        <div class="units-header-actions">
+            <button type="button" class="btn-add-unit" onclick="openAddUnitModal()">
+                <i class='bx bx-plus'></i> Tambah Satuan
+            </button>
         </div>
 
         <div class="table-container">
@@ -208,7 +263,11 @@ try {
                                     <button
                                         type="button"
                                         class="btn-edit"
-                                        onclick="fillEditForm(<?php echo $unitId; ?>, '<?php echo htmlspecialchars((string)$unit['value'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars((string)$unit['label'], ENT_QUOTES); ?>', <?php echo (int)$unit['display_order']; ?>)">
+                                        data-unit-id="<?php echo $unitId; ?>"
+                                        data-value="<?php echo htmlspecialchars((string)$unit['value'], ENT_QUOTES); ?>"
+                                        data-label="<?php echo htmlspecialchars((string)$unit['label'], ENT_QUOTES); ?>"
+                                        data-display-order="<?php echo (int)$unit['display_order']; ?>"
+                                        onclick="openEditUnitModal(this)">
                                         <i class='bx bx-edit'></i>
                                     </button>
                                     <form method="POST" class="action-form" onsubmit="return confirm('Ubah status satuan ini?');">
@@ -232,44 +291,119 @@ try {
             </table>
         </div>
 
-        <div class="table-container" style="margin-top: 20px;">
-            <div class="table-header">
-                <h3>Edit Satuan</h3>
+        <div class="unit-modal-overlay" id="add-unit-modal" onclick="closeModalOnBackdrop(event, 'add-unit-modal')">
+            <div class="unit-modal" role="dialog" aria-modal="true" aria-labelledby="add-unit-modal-title">
+                <div class="unit-modal-header">
+                    <h3 id="add-unit-modal-title">Tambah Satuan</h3>
+                    <button type="button" class="unit-modal-close" onclick="closeUnitModal('add-unit-modal')">&times;</button>
+                </div>
+                <div class="unit-modal-body">
+                    <form method="POST" class="add-form" id="add-unit-form">
+                        <input type="hidden" name="action" value="create_unit">
+                        <div class="form-group">
+                            <label for="add_value">Value (unik)</label>
+                            <input type="text" id="add_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" placeholder="contoh: drum" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_label">Label</label>
+                            <input type="text" id="add_label" name="label" maxlength="100" placeholder="contoh: Drum" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add_display_order">Urutan Tampil</label>
+                            <input type="number" id="add_display_order" name="display_order" min="0" max="9999" value="0" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-submit">Simpan Satuan</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <form method="POST" class="add-form" id="edit-unit-form">
-                <input type="hidden" name="action" value="update_unit">
-                <input type="hidden" id="edit_unit_id" name="unit_id" value="">
-                <div class="form-group">
-                    <label for="edit_value">Value (unik)</label>
-                    <input type="text" id="edit_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" required>
+        </div>
+
+        <div class="unit-modal-overlay" id="edit-unit-modal" onclick="closeModalOnBackdrop(event, 'edit-unit-modal')">
+            <div class="unit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-unit-modal-title">
+                <div class="unit-modal-header">
+                    <h3 id="edit-unit-modal-title">Edit Satuan</h3>
+                    <button type="button" class="unit-modal-close" onclick="closeUnitModal('edit-unit-modal')">&times;</button>
                 </div>
-                <div class="form-group">
-                    <label for="edit_label">Label</label>
-                    <input type="text" id="edit_label" name="label" maxlength="100" required>
+                <div class="unit-modal-body">
+                    <form method="POST" class="add-form" id="edit-unit-form">
+                        <input type="hidden" name="action" value="update_unit">
+                        <input type="hidden" id="edit_unit_id" name="unit_id" value="">
+                        <div class="form-group">
+                            <label for="edit_value">Value (unik)</label>
+                            <input type="text" id="edit_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_label">Label</label>
+                            <input type="text" id="edit_label" name="label" maxlength="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_display_order">Urutan Tampil</label>
+                            <input type="number" id="edit_display_order" name="display_order" min="0" max="9999" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-submit">Update Satuan</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label for="edit_display_order">Urutan Tampil</label>
-                    <input type="number" id="edit_display_order" name="display_order" min="0" max="9999" required>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-submit">Update Satuan</button>
-                </div>
-            </form>
+            </div>
         </div>
     </main>
 
     <script src="script.js?<?php echo getVersion(); ?>"></script>
     <script>
-        function fillEditForm(id, value, label, displayOrder) {
-            document.getElementById('edit_unit_id').value = id;
-            document.getElementById('edit_value').value = value;
-            document.getElementById('edit_label').value = label;
-            document.getElementById('edit_display_order').value = displayOrder;
-            document.getElementById('edit-unit-form').scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
+        function openAddUnitModal() {
+            const addForm = document.getElementById('add-unit-form');
+            if (addForm) {
+                addForm.reset();
+                const addDisplayOrder = document.getElementById('add_display_order');
+                if (addDisplayOrder) {
+                    addDisplayOrder.value = 0;
+                }
+            }
+
+            const modal = document.getElementById('add-unit-modal');
+            if (modal) {
+                modal.classList.add('show');
+            }
         }
+
+        function openEditUnitModal(button) {
+            if (!button) {
+                return;
+            }
+
+            document.getElementById('edit_unit_id').value = button.dataset.unitId || '';
+            document.getElementById('edit_value').value = button.dataset.value || '';
+            document.getElementById('edit_label').value = button.dataset.label || '';
+            document.getElementById('edit_display_order').value = button.dataset.displayOrder || 0;
+
+            const modal = document.getElementById('edit-unit-modal');
+            if (modal) {
+                modal.classList.add('show');
+            }
+        }
+
+        function closeUnitModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        function closeModalOnBackdrop(event, modalId) {
+            if (event.target && event.target.id === modalId) {
+                closeUnitModal(modalId);
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeUnitModal('add-unit-modal');
+                closeUnitModal('edit-unit-modal');
+            }
+        });
     </script>
 </body>
 
