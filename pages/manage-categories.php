@@ -200,79 +200,6 @@ try {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <style>
-        .categories-header-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 12px;
-        }
-
-        .btn-add-category {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            padding: 10px 14px;
-            background-color: var(--fern-green);
-            color: #fff;
-            font-weight: 600;
-        }
-
-        .btn-add-category:hover {
-            background-color: var(--hunter-green);
-        }
-
-        .category-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 9999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-        }
-
-        .category-modal-overlay.show {
-            display: flex;
-        }
-
-        .category-modal {
-            width: 100%;
-            max-width: 520px;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: var(--box-shadow);
-            overflow: hidden;
-        }
-
-        .category-modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 18px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .category-modal-header h3 {
-            margin: 0;
-            font-size: 1.05rem;
-        }
-
-        .category-modal-close {
-            border: none;
-            background: transparent;
-            color: #666;
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
-
-        .category-modal-body {
-            padding: 16px;
-        }
-    </style>
 </head>
 
 <body>
@@ -287,8 +214,8 @@ try {
             <?php echo $message; ?>
         <?php endif; ?>
 
-        <div class="categories-header-actions">
-            <button type="button" class="btn-add-category" onclick="openAddCategoryModal()">
+        <div class="categories-header-actions modal-header-actions">
+            <button type="button" class="btn-add-category btn-modal-add" onclick="openAddCategoryModal()">
                 <i class='bx bx-plus'></i> Tambah Kategori
             </button>
         </div>
@@ -358,13 +285,13 @@ try {
             </table>
         </div>
 
-        <div class="category-modal-overlay" id="add-category-modal" onclick="closeCategoryModalOnBackdrop(event, 'add-category-modal')">
-            <div class="category-modal" role="dialog" aria-modal="true" aria-labelledby="add-category-modal-title">
-                <div class="category-modal-header">
+        <div class="category-modal-overlay app-modal-overlay" id="add-category-modal" onclick="closeCategoryModalOnBackdrop(event, 'add-category-modal')">
+            <div class="category-modal app-modal app-modal--category" role="dialog" aria-modal="true" aria-labelledby="add-category-modal-title">
+                <div class="category-modal-header app-modal-header">
                     <h3 id="add-category-modal-title">Tambah Kategori</h3>
-                    <button type="button" class="category-modal-close" onclick="closeCategoryModal('add-category-modal')">&times;</button>
+                    <button type="button" class="category-modal-close app-modal-close" onclick="closeCategoryModal('add-category-modal')">&times;</button>
                 </div>
-                <div class="category-modal-body">
+                <div class="category-modal-body app-modal-body">
                     <form method="POST" class="add-form" id="add-category-form">
                         <input type="hidden" name="action" value="create_category">
 
@@ -393,13 +320,13 @@ try {
             </div>
         </div>
 
-        <div class="category-modal-overlay" id="edit-category-modal" onclick="closeCategoryModalOnBackdrop(event, 'edit-category-modal')">
-            <div class="category-modal" role="dialog" aria-modal="true" aria-labelledby="edit-category-modal-title">
-                <div class="category-modal-header">
+        <div class="category-modal-overlay app-modal-overlay" id="edit-category-modal" onclick="closeCategoryModalOnBackdrop(event, 'edit-category-modal')">
+            <div class="category-modal app-modal app-modal--category" role="dialog" aria-modal="true" aria-labelledby="edit-category-modal-title">
+                <div class="category-modal-header app-modal-header">
                     <h3 id="edit-category-modal-title">Edit Kategori</h3>
-                    <button type="button" class="category-modal-close" onclick="closeCategoryModal('edit-category-modal')">&times;</button>
+                    <button type="button" class="category-modal-close app-modal-close" onclick="closeCategoryModal('edit-category-modal')">&times;</button>
                 </div>
-                <div class="category-modal-body">
+                <div class="category-modal-body app-modal-body">
                     <form method="POST" class="add-form" id="edit-category-form">
                         <input type="hidden" name="action" value="update_category">
                         <input type="hidden" id="edit_category_id" name="category_id" value="<?php echo htmlspecialchars((string)$editFormState['category_id']); ?>">
