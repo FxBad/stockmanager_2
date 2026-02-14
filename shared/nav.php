@@ -53,6 +53,13 @@ $isField = $role === 'field';
                 <?php endif; ?>
 
                 <?php if ($isAdmin): ?>
+                    <li class="list <?php echo isActive(['manage-categories.php']); ?>">
+                        <a href="manage-categories.php" class="nav-link">
+                            <i class="bx bx-category icon"></i>
+                            <span class="link">Kelola Kategori</span>
+                        </a>
+                    </li>
+
                     <li class="list <?php echo isActive(['manage-units.php']); ?>">
                         <a href="manage-units.php" class="nav-link">
                             <i class="bx bx-ruler icon"></i>
