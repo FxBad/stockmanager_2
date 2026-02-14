@@ -103,35 +103,40 @@ try {
         'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
     ]);
 
-    $schemaFlags = itemSchemaFlags();
-    $historyInsert = buildItemHistoryInsert(
-        $schemaFlags,
-        [
-            'item_id' => $itemId,
-            'item_name' => isset($item['name']) ? $item['name'] : '',
-            'category' => isset($item['category']) ? $item['category'] : '',
-            'action' => 'delete',
-            'field_stock_old' => $item['field_stock'],
-            'field_stock_new' => null,
-            'warehouse_stock_old' => 0,
-            'warehouse_stock_new' => null,
-            'status_old' => $item['status'],
-            'status_new' => null,
-            'total_stock_old' => $totalStock,
-            'total_stock_new' => null,
-            'days_coverage_old' => $daysCoverage,
-            'days_coverage_new' => null,
-            'unit' => ($item['unit'] !== null ? $item['unit'] : ''),
-            'unit_conversion' => $item['unit_conversion'],
-            'daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $item['daily_consumption'],
-            'min_days_coverage' => isset($item['min_days_coverage']) ? $item['min_days_coverage'] : 1,
-            'changed_by' => isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null,
-            'note' => 'soft-deleted via UI (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')',
-            'level' => isset($item['level']) ? $item['level'] : null,
-        ]
-    );
-    $histStmt = $pdo->prepare($historyInsert['sql']);
-    $histStmt->execute($historyInsert['params']);
+    $historyWarning = null;
+    try {
+        $schemaFlags = itemSchemaFlags();
+        $historyInsert = buildItemHistoryInsert(
+            $schemaFlags,
+            [
+                'item_id' => $itemId,
+                'item_name' => isset($item['name']) ? $item['name'] : '',
+                'category' => isset($item['category']) ? $item['category'] : '',
+                'action' => 'delete',
+                'field_stock_old' => $item['field_stock'],
+                'field_stock_new' => null,
+                'warehouse_stock_old' => 0,
+                'warehouse_stock_new' => null,
+                'status_old' => $item['status'],
+                'status_new' => null,
+                'total_stock_old' => $totalStock,
+                'total_stock_new' => null,
+                'days_coverage_old' => $daysCoverage,
+                'days_coverage_new' => null,
+                'unit' => ($item['unit'] !== null ? $item['unit'] : ''),
+                'unit_conversion' => $item['unit_conversion'],
+                'daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $item['daily_consumption'],
+                'min_days_coverage' => isset($item['min_days_coverage']) ? $item['min_days_coverage'] : 1,
+                'changed_by' => isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null,
+                'note' => 'soft-deleted via UI (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')',
+                'level' => isset($item['level']) ? $item['level'] : null,
+            ]
+        );
+        $histStmt = $pdo->prepare($historyInsert['sql']);
+        $histStmt->execute($historyInsert['params']);
+    } catch (Exception $historyException) {
+        $historyWarning = $historyException->getMessage();
+    }
 
     // Soft delete item (archive)
     $includeDeletedBy = db_has_column('items', 'deleted_by');
@@ -145,7 +150,21 @@ try {
 
     $pdo->commit();
 
-    send_json(['success' => true, 'message' => 'Item archived'], 200);
+    if ($historyWarning !== null) {
+        $logDir = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'logs';
+        if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
+        $logFile = $logDir . DIRECTORY_SEPARATOR . 'error.log';
+        $ts = date('Y-m-d H:i:s');
+        $msg = "{$ts} | delete-item history warning: {$historyWarning}\n";
+        @file_put_contents($logFile, $msg, FILE_APPEND | LOCK_EX);
+    }
+
+    send_json([
+        'success' => true,
+        'message' => $historyWarning === null
+            ? 'Item archived'
+            : 'Item archived (riwayat perubahan gagal dicatat)'
+    ], 200);
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
