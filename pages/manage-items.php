@@ -12,11 +12,6 @@ $units = getUnits();
 
 $itemsHasLevelFlag = db_has_column('items', 'has_level');
 $itemsHasLevelValue = db_has_column('items', 'level');
-$itemsHasWarehouseStock = db_has_column('items', 'warehouse_stock');
-$itemsHasCalculationType = db_has_column('items', 'calculation_type');
-$histHasLevel = db_has_column('item_stock_history', 'level');
-$histHasWarehouseOld = db_has_column('item_stock_history', 'warehouse_stock_old');
-$histHasWarehouseNew = db_has_column('item_stock_history', 'warehouse_stock_new');
 
 $hasLevelSelect = $itemsHasLevelFlag ? ', i.has_level' : '';
 $levelSelect = $itemsHasLevelValue ? ', i.level' : ', NULL AS level';
@@ -51,474 +46,53 @@ $editItemState = [
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = trim((string)$_POST['action']);
 
-    try {
-        if ($action !== 'create_item' && $action !== 'update_item') {
-            throw new Exception('Aksi tidak dikenali.');
-        }
-
+    if ($action === 'create_item' || $action === 'update_item') {
         $itemId = isset($_POST['item_id']) ? (int)$_POST['item_id'] : 0;
-        $name = isset($_POST['name']) ? trim((string)$_POST['name']) : '';
-        $categoryInput = isset($_POST['category']) ? trim((string)$_POST['category']) : '';
-        $fieldStock = isset($_POST['field_stock']) && is_numeric($_POST['field_stock']) ? (int)$_POST['field_stock'] : 0;
-        $unit = isset($_POST['unit']) ? trim((string)$_POST['unit']) : '';
-        $unitConversion = isset($_POST['unit_conversion']) && is_numeric($_POST['unit_conversion']) ? round((float)$_POST['unit_conversion'], 1) : 1.0;
-        $dailyConsumption = isset($_POST['daily_consumption']) && is_numeric($_POST['daily_consumption']) ? round((float)$_POST['daily_consumption'], 1) : 0.0;
-        $minDaysCoverage = isset($_POST['min_days_coverage']) && is_numeric($_POST['min_days_coverage']) ? (int)$_POST['min_days_coverage'] : 1;
-        $description = isset($_POST['description']) ? trim((string)$_POST['description']) : '';
-        $hasLevel = $itemsHasLevelFlag ? (isset($_POST['has_level']) ? 1 : 0) : 0;
-        $levelInput = isset($_POST['level']) ? trim((string)$_POST['level']) : '';
-        $levelVal = null;
+        $mode = $action === 'create_item' ? 'create' : 'update';
+        $result = saveItemWithHistory($_POST, $_SESSION['user_id'], $mode, ['item_id' => $itemId, 'context' => 'manage-items.php']);
 
-        if ($action === 'create_item') {
-            $addItemState = [
-                'name' => $name,
-                'category' => $categoryInput,
-                'field_stock' => $fieldStock,
-                'unit' => $unit,
-                'unit_conversion' => $unitConversion,
-                'daily_consumption' => $dailyConsumption,
-                'min_days_coverage' => $minDaysCoverage,
-                'description' => $description,
-                'has_level' => $hasLevel,
-                'level' => $levelInput,
-            ];
-            $modalToOpen = 'add-item-modal';
-        } else {
-            $editItemState = [
-                'item_id' => (string)$itemId,
-                'name' => $name,
-                'category' => $categoryInput,
-                'field_stock' => $fieldStock,
-                'unit' => $unit,
-                'unit_conversion' => $unitConversion,
-                'daily_consumption' => $dailyConsumption,
-                'min_days_coverage' => $minDaysCoverage,
-                'description' => $description,
-                'has_level' => $hasLevel,
-                'level' => $levelInput,
-            ];
-            $modalToOpen = 'edit-item-modal';
-        }
+        $modalToOpen = $mode === 'create' ? 'add-item-modal' : 'edit-item-modal';
 
-        $validationErrors = [];
-
-        if ($name === '') {
-            $validationErrors[] = 'Nama barang harus diisi.';
-        }
-        if ($categoryInput === '') {
-            $validationErrors[] = 'Kategori harus diisi.';
-        }
-        if ($unit === '') {
-            $validationErrors[] = 'Satuan harus dipilih.';
-        }
-        if ($fieldStock < 0) {
-            $validationErrors[] = 'Stok tidak boleh negatif.';
-        }
-        if ($unitConversion <= 0) {
-            $validationErrors[] = 'Faktor konversi harus lebih dari 0.';
-        }
-        if ($dailyConsumption < 0) {
-            $validationErrors[] = 'Konsumsi harian tidak boleh negatif.';
-        }
-        if ($minDaysCoverage < 1) {
-            $validationErrors[] = 'Minimum periode minimal 1 hari.';
-        }
-
-        if ($itemsHasLevelFlag && $hasLevel) {
-            if ($levelInput === '') {
-                $validationErrors[] = 'Level wajib diisi saat mode level aktif.';
-            } elseif (!ctype_digit($levelInput)) {
-                $validationErrors[] = 'Level tidak valid. Masukkan angka bulat (cm).';
+        if (!empty($result['data']) && is_array($result['data'])) {
+            if ($mode === 'create') {
+                $addItemState = [
+                    'name' => $result['data']['name'],
+                    'category' => $result['data']['category'],
+                    'field_stock' => $result['data']['field_stock'],
+                    'unit' => $result['data']['unit'],
+                    'unit_conversion' => $result['data']['unit_conversion'],
+                    'daily_consumption' => $result['data']['daily_consumption'],
+                    'min_days_coverage' => $result['data']['min_days_coverage'],
+                    'description' => $result['data']['description'],
+                    'has_level' => $result['data']['has_level'],
+                    'level' => $result['data']['level_input'],
+                ];
             } else {
-                $levelVal = (int)$levelInput;
+                $editItemState = [
+                    'item_id' => (string)$itemId,
+                    'name' => $result['data']['name'],
+                    'category' => $result['data']['category'],
+                    'field_stock' => $result['data']['field_stock'],
+                    'unit' => $result['data']['unit'],
+                    'unit_conversion' => $result['data']['unit_conversion'],
+                    'daily_consumption' => $result['data']['daily_consumption'],
+                    'min_days_coverage' => $result['data']['min_days_coverage'],
+                    'description' => $result['data']['description'],
+                    'has_level' => $result['data']['has_level'],
+                    'level' => $result['data']['level_input'],
+                ];
             }
         }
 
-        if (!empty($validationErrors)) {
-            $message = '<div class="alert error"><ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $validationErrors)) . '</li></ul></div>';
-            throw new Exception('__validation_stop__');
-        }
-
-        $warehouseStock = 0;
-        $totalStockNew = ($fieldStock + $warehouseStock) * $unitConversion;
-
-        if ($action === 'create_item') {
-            $daysCoverageNew = calculateDaysCoverage(
-                $fieldStock,
-                0,
-                $unitConversion,
-                $dailyConsumption,
-                $name,
-                $levelVal,
-                (bool)$hasLevel,
-                [
-                    'category' => $categoryInput,
-                    'min_days_coverage' => $minDaysCoverage
-                ]
-            );
-            $statusNew = determineStatus($daysCoverageNew, $minDaysCoverage);
-
-            $resolvedDaily = resolveDailyConsumption($dailyConsumption, [
-                'category' => $categoryInput,
-                'effective_stock' => $totalStockNew,
-                'min_days_coverage' => $minDaysCoverage
-            ]);
-
-            $pdo->beginTransaction();
-
-            $columns = [
-                'name',
-                'category',
-                'field_stock',
-                'unit',
-                'unit_conversion',
-                'daily_consumption',
-                'min_days_coverage',
-                'description',
-                'added_by',
-                'status'
-            ];
-            $placeholders = [
-                ':name',
-                ':category',
-                ':field_stock',
-                ':unit',
-                ':unit_conversion',
-                ':daily_consumption',
-                ':min_days_coverage',
-                ':description',
-                ':added_by',
-                ':status'
-            ];
-
-            if ($itemsHasWarehouseStock) {
-                array_splice($columns, 3, 0, 'warehouse_stock');
-                array_splice($placeholders, 3, 0, ':warehouse_stock');
-            }
-            if ($itemsHasCalculationType) {
-                $insertPos = count($columns) - 1;
-                array_splice($columns, $insertPos, 0, 'calculation_type');
-                array_splice($placeholders, $insertPos, 0, ':calculation_type');
-            }
-            if ($itemsHasLevelValue) {
-                array_splice($columns, 8, 0, 'level');
-                array_splice($placeholders, 8, 0, ':level');
-            }
-            if ($itemsHasLevelFlag) {
-                array_splice($columns, 8, 0, 'has_level');
-                array_splice($placeholders, 8, 0, ':has_level');
-            }
-
-            $stmt = $pdo->prepare('INSERT INTO items (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')');
-            $params = [
-                ':name' => $name,
-                ':category' => $categoryInput,
-                ':field_stock' => $fieldStock,
-                ':unit' => $unit,
-                ':unit_conversion' => $unitConversion,
-                ':daily_consumption' => $dailyConsumption,
-                ':min_days_coverage' => $minDaysCoverage,
-                ':description' => $description,
-                ':added_by' => $_SESSION['user_id'],
-                ':status' => $statusNew,
-            ];
-
-            if ($itemsHasWarehouseStock) {
-                $params[':warehouse_stock'] = $warehouseStock;
-            }
-            if ($itemsHasCalculationType) {
-                $params[':calculation_type'] = 'daily_consumption';
-            }
-            if ($itemsHasLevelValue) {
-                $params[':level'] = $levelVal;
-            }
-            if ($itemsHasLevelFlag) {
-                $params[':has_level'] = $hasLevel;
-            }
-
-            $stmt->execute($params);
-            $newItemId = (int)$pdo->lastInsertId();
-
-            $histColumns = [
-                'item_id',
-                'item_name',
-                'category',
-                'action',
-                'field_stock_old',
-                'field_stock_new',
-                'status_old',
-                'status_new',
-                'total_stock_old',
-                'total_stock_new',
-                'days_coverage_old',
-                'days_coverage_new',
-                'unit',
-                'unit_conversion',
-                'daily_consumption',
-                'min_days_coverage',
-                'changed_by',
-                'note'
-            ];
-            $histValues = [
-                ':item_id',
-                ':item_name',
-                ':category',
-                ':action',
-                'NULL',
-                ':field_stock_new',
-                'NULL',
-                ':status_new',
-                'NULL',
-                ':total_stock_new',
-                'NULL',
-                ':days_coverage_new',
-                ':unit',
-                ':unit_conversion',
-                ':daily_consumption',
-                ':min_days_coverage',
-                ':changed_by',
-                ':note'
-            ];
-
-            if ($histHasWarehouseOld) {
-                array_splice($histColumns, 6, 0, 'warehouse_stock_old');
-                array_splice($histValues, 6, 0, 'NULL');
-            }
-            if ($histHasWarehouseNew) {
-                $insertPos = $histHasWarehouseOld ? 7 : 6;
-                array_splice($histColumns, $insertPos, 0, 'warehouse_stock_new');
-                array_splice($histValues, $insertPos, 0, ':warehouse_stock_new');
-            }
-            if ($histHasLevel) {
-                array_splice($histColumns, 15, 0, 'level');
-                array_splice($histValues, 15, 0, ':level');
-            }
-
-            $histStmt = $pdo->prepare('INSERT INTO item_stock_history (' . implode(', ', $histColumns) . ') VALUES (' . implode(', ', $histValues) . ')');
-            $histParams = [
-                ':item_id' => $newItemId,
-                ':item_name' => $name,
-                ':category' => $categoryInput,
-                ':action' => 'insert',
-                ':field_stock_new' => $fieldStock,
-                ':status_new' => $statusNew,
-                ':total_stock_new' => $totalStockNew,
-                ':days_coverage_new' => $daysCoverageNew,
-                ':unit' => $unit,
-                ':unit_conversion' => $unitConversion,
-                ':daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $dailyConsumption,
-                ':min_days_coverage' => $minDaysCoverage,
-                ':changed_by' => $_SESSION['user_id'],
-                ':note' => 'initial insert (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')',
-            ];
-
-            if ($histHasWarehouseNew) {
-                $histParams[':warehouse_stock_new'] = $warehouseStock;
-            }
-            if ($histHasLevel) {
-                $histParams[':level'] = $levelVal;
-            }
-
-            $histStmt->execute($histParams);
-            $pdo->commit();
-
-            $message = '<div class="alert success">Barang berhasil ditambahkan.</div>';
+        if ($result['success']) {
             $modalToOpen = '';
+            $message = '<div class="alert success">' . ($mode === 'create' ? 'Barang berhasil ditambahkan.' : 'Barang berhasil diperbarui.') . '</div>';
         } else {
-            if ($itemId <= 0) {
-                throw new Exception('ID barang tidak valid.');
+            if (!empty($result['errors'])) {
+                $message = '<div class="alert error"><ul><li>' . implode('</li><li>', array_map('htmlspecialchars', $result['errors'])) . '</li></ul></div>';
+            } else {
+                $message = '<div class="alert error">Error: ' . htmlspecialchars((string)$result['message']) . '</div>';
             }
-
-            $stmtOld = $pdo->prepare('SELECT * FROM items WHERE id = ? AND ' . activeItemsWhereSql());
-            $stmtOld->execute([$itemId]);
-            $old = $stmtOld->fetch(PDO::FETCH_ASSOC);
-            if (!$old) {
-                throw new Exception('Barang tidak ditemukan atau sudah diarsipkan.');
-            }
-
-            $pdo->beginTransaction();
-
-            $newTotal = ($fieldStock) * $unitConversion;
-            $newDays = calculateDaysCoverage(
-                $fieldStock,
-                0,
-                $unitConversion,
-                $dailyConsumption,
-                $name,
-                $levelVal,
-                (bool)$hasLevel,
-                [
-                    'item_id' => $itemId,
-                    'category' => $categoryInput,
-                    'min_days_coverage' => $minDaysCoverage
-                ]
-            );
-            $resolvedDaily = resolveDailyConsumption($dailyConsumption, [
-                'item_id' => $itemId,
-                'category' => $categoryInput,
-                'effective_stock' => $newTotal,
-                'min_days_coverage' => $minDaysCoverage
-            ]);
-            $newStatus = determineStatus($newDays, $minDaysCoverage);
-
-            $set = [
-                'name = :name',
-                'category = :category',
-                'field_stock = :field_stock',
-                'unit = :unit',
-                'unit_conversion = :unit_conversion',
-                'daily_consumption = :daily_consumption',
-                'min_days_coverage = :min_days_coverage',
-                'description = :description',
-                'updated_by = :updated_by',
-                'status = :status'
-            ];
-            if ($itemsHasLevelValue) {
-                $set[] = 'level = :level';
-            }
-            if ($itemsHasLevelFlag) {
-                $set[] = 'has_level = :has_level';
-            }
-
-            $stmtUpdate = $pdo->prepare('UPDATE items SET ' . implode(', ', $set) . ' WHERE id = :id AND ' . activeItemsWhereSql());
-            $updateParams = [
-                ':name' => $name,
-                ':category' => $categoryInput,
-                ':field_stock' => $fieldStock,
-                ':unit' => $unit,
-                ':unit_conversion' => $unitConversion,
-                ':daily_consumption' => $dailyConsumption,
-                ':min_days_coverage' => $minDaysCoverage,
-                ':description' => $description,
-                ':updated_by' => $_SESSION['user_id'],
-                ':status' => $newStatus,
-                ':id' => $itemId,
-            ];
-            if ($itemsHasLevelValue) {
-                $updateParams[':level'] = $levelVal;
-            }
-            if ($itemsHasLevelFlag) {
-                $updateParams[':has_level'] = $hasLevel;
-            }
-
-            $stmtUpdate->execute($updateParams);
-
-            $oldTotal = ((float)($old['field_stock'] ?? 0)) * ((float)($old['unit_conversion'] ?? 1));
-            $oldHasLevel = isset($old['has_level']) ? (bool)$old['has_level'] : false;
-            $oldDays = calculateDaysCoverage(
-                (float)($old['field_stock'] ?? 0),
-                0,
-                (float)($old['unit_conversion'] ?? 1),
-                (float)($old['daily_consumption'] ?? 0),
-                (string)($old['name'] ?? ''),
-                array_key_exists('level', $old) ? $old['level'] : null,
-                $oldHasLevel,
-                [
-                    'item_id' => $itemId,
-                    'category' => (string)($old['category'] ?? ''),
-                    'min_days_coverage' => (int)($old['min_days_coverage'] ?? 1)
-                ]
-            );
-
-            $histCols = [
-                'item_id',
-                'item_name',
-                'category',
-                'action',
-                'field_stock_old',
-                'field_stock_new',
-                'status_old',
-                'status_new',
-                'total_stock_old',
-                'total_stock_new',
-                'days_coverage_old',
-                'days_coverage_new',
-                'unit',
-                'unit_conversion',
-                'daily_consumption',
-                'min_days_coverage',
-                'changed_by',
-                'note'
-            ];
-            $histVals = [
-                ':item_id',
-                ':item_name',
-                ':category',
-                ':action',
-                ':field_stock_old',
-                ':field_stock_new',
-                ':status_old',
-                ':status_new',
-                ':total_stock_old',
-                ':total_stock_new',
-                ':days_coverage_old',
-                ':days_coverage_new',
-                ':unit',
-                ':unit_conversion',
-                ':daily_consumption',
-                ':min_days_coverage',
-                ':changed_by',
-                ':note'
-            ];
-
-            if ($histHasWarehouseOld) {
-                array_splice($histCols, 6, 0, 'warehouse_stock_old');
-                array_splice($histVals, 6, 0, ':warehouse_stock_old');
-            }
-            if ($histHasWarehouseNew) {
-                $insertPos = $histHasWarehouseOld ? 7 : 6;
-                array_splice($histCols, $insertPos, 0, 'warehouse_stock_new');
-                array_splice($histVals, $insertPos, 0, ':warehouse_stock_new');
-            }
-            if ($histHasLevel) {
-                array_splice($histCols, 15, 0, 'level');
-                array_splice($histVals, 15, 0, ':level');
-            }
-
-            $histStmt = $pdo->prepare('INSERT INTO item_stock_history (' . implode(', ', $histCols) . ') VALUES (' . implode(', ', $histVals) . ')');
-            $histParams = [
-                ':item_id' => $itemId,
-                ':item_name' => $name,
-                ':category' => $categoryInput,
-                ':action' => 'update',
-                ':field_stock_old' => (float)($old['field_stock'] ?? 0),
-                ':field_stock_new' => $fieldStock,
-                ':status_old' => (string)($old['status'] ?? ''),
-                ':status_new' => $newStatus,
-                ':total_stock_old' => $oldTotal,
-                ':total_stock_new' => $newTotal,
-                ':days_coverage_old' => $oldDays,
-                ':days_coverage_new' => $newDays,
-                ':unit' => $unit,
-                ':unit_conversion' => $unitConversion,
-                ':daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $dailyConsumption,
-                ':min_days_coverage' => $minDaysCoverage,
-                ':changed_by' => $_SESSION['user_id'],
-                ':note' => 'updated via manage-items modal (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')',
-            ];
-
-            if ($histHasWarehouseOld) {
-                $histParams[':warehouse_stock_old'] = 0;
-            }
-            if ($histHasWarehouseNew) {
-                $histParams[':warehouse_stock_new'] = 0;
-            }
-            if ($histHasLevel) {
-                $histParams[':level'] = $levelVal;
-            }
-
-            $histStmt->execute($histParams);
-            $pdo->commit();
-
-            $message = '<div class="alert success">Barang berhasil diperbarui.</div>';
-            $modalToOpen = '';
-        }
-    } catch (Exception $e) {
-        if ($e->getMessage() !== '__validation_stop__') {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            $message = '<div class="alert error">Error: ' . htmlspecialchars($e->getMessage()) . '</div>';
         }
     }
 }

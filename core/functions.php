@@ -226,6 +226,500 @@ function determineStatus($daysCoverage, $minDaysCoverage)
     }
 }
 
+function itemSchemaFlags()
+{
+    static $flags = null;
+
+    if ($flags !== null) {
+        return $flags;
+    }
+
+    $flags = [
+        'items_has_level_flag' => db_has_column('items', 'has_level'),
+        'items_has_level_value' => db_has_column('items', 'level'),
+        'items_has_warehouse_stock' => db_has_column('items', 'warehouse_stock'),
+        'items_has_calculation_type' => db_has_column('items', 'calculation_type'),
+        'hist_has_level' => db_has_column('item_stock_history', 'level'),
+        'hist_has_warehouse_old' => db_has_column('item_stock_history', 'warehouse_stock_old'),
+        'hist_has_warehouse_new' => db_has_column('item_stock_history', 'warehouse_stock_new'),
+    ];
+
+    return $flags;
+}
+
+function normalizeItemInput(array $input, array $schema)
+{
+    $hasLevelChecked = false;
+    if (!empty($schema['items_has_level_flag'])) {
+        $hasLevelChecked = isset($input['has_level']) && (string)$input['has_level'] !== '0';
+    }
+
+    $levelInput = isset($input['level']) ? trim((string)$input['level']) : '';
+    $levelVal = null;
+    if ($levelInput !== '' && ctype_digit($levelInput)) {
+        $levelVal = (int)$levelInput;
+    }
+
+    return [
+        'name' => isset($input['name']) ? trim((string)$input['name']) : '',
+        'category' => isset($input['category']) ? trim((string)$input['category']) : '',
+        'field_stock' => isset($input['field_stock']) && is_numeric($input['field_stock']) ? (int)$input['field_stock'] : 0,
+        'unit' => isset($input['unit']) ? trim((string)$input['unit']) : '',
+        'unit_conversion' => isset($input['unit_conversion']) && is_numeric($input['unit_conversion']) ? round((float)$input['unit_conversion'], 1) : 1.0,
+        'daily_consumption' => isset($input['daily_consumption']) && is_numeric($input['daily_consumption']) ? round((float)$input['daily_consumption'], 1) : 0.0,
+        'min_days_coverage' => isset($input['min_days_coverage']) && is_numeric($input['min_days_coverage']) ? (int)$input['min_days_coverage'] : 1,
+        'description' => isset($input['description']) ? trim((string)$input['description']) : '',
+        'has_level' => $hasLevelChecked ? 1 : 0,
+        'level_input' => $levelInput,
+        'level' => $levelVal,
+    ];
+}
+
+function validateItemInput(array $normalized, array $schema)
+{
+    $errors = [];
+
+    if ($normalized['name'] === '') {
+        $errors[] = 'Nama barang harus diisi.';
+    }
+    if ($normalized['category'] === '') {
+        $errors[] = 'Kategori harus diisi.';
+    }
+    if ($normalized['unit'] === '') {
+        $errors[] = 'Satuan harus dipilih.';
+    }
+    if ($normalized['field_stock'] < 0) {
+        $errors[] = 'Stok tidak boleh negatif.';
+    }
+    if ($normalized['unit_conversion'] <= 0) {
+        $errors[] = 'Faktor konversi harus lebih dari 0.';
+    }
+    if ($normalized['daily_consumption'] < 0) {
+        $errors[] = 'Konsumsi harian tidak boleh negatif.';
+    }
+    if ($normalized['min_days_coverage'] < 1) {
+        $errors[] = 'Minimum periode minimal 1 hari.';
+    }
+
+    if (!empty($schema['items_has_level_flag'])) {
+        if ($normalized['has_level'] === 1) {
+            if ($normalized['level_input'] === '') {
+                $errors[] = 'Level wajib diisi saat mode level aktif.';
+            } elseif (!ctype_digit($normalized['level_input'])) {
+                $errors[] = 'Level tidak valid. Masukkan angka bulat (cm).';
+            }
+        } elseif ($normalized['level_input'] !== '') {
+            $errors[] = 'Level hanya boleh diisi jika mode level aktif.';
+        }
+    }
+
+    return $errors;
+}
+
+function saveItemWithHistory(array $input, $userId, $mode = 'create', array $options = [])
+{
+    $result = [
+        'success' => false,
+        'message' => '',
+        'errors' => [],
+        'item_id' => null,
+        'data' => null,
+    ];
+
+    if (!isset($GLOBALS['pdo']) || !$GLOBALS['pdo'] instanceof PDO) {
+        $result['message'] = 'Koneksi database tidak tersedia.';
+        return $result;
+    }
+
+    $pdo = $GLOBALS['pdo'];
+    $schema = itemSchemaFlags();
+    $normalized = normalizeItemInput($input, $schema);
+    $result['data'] = $normalized;
+
+    $mode = strtolower(trim((string)$mode));
+    if ($mode !== 'create' && $mode !== 'update') {
+        $result['message'] = 'Mode operasi item tidak valid.';
+        return $result;
+    }
+
+    $itemId = isset($options['item_id']) ? (int)$options['item_id'] : 0;
+    if ($mode === 'update' && $itemId <= 0) {
+        $result['message'] = 'ID barang tidak valid.';
+        return $result;
+    }
+
+    $errors = validateItemInput($normalized, $schema);
+    if (!empty($errors)) {
+        $result['errors'] = $errors;
+        return $result;
+    }
+
+    $warehouseStock = 0;
+
+    try {
+        if ($mode === 'create') {
+            $totalStockNew = ($normalized['field_stock'] + $warehouseStock) * $normalized['unit_conversion'];
+            $daysCoverageNew = calculateDaysCoverage(
+                $normalized['field_stock'],
+                0,
+                $normalized['unit_conversion'],
+                $normalized['daily_consumption'],
+                $normalized['name'],
+                $normalized['level'],
+                (bool)$normalized['has_level'],
+                [
+                    'category' => $normalized['category'],
+                    'min_days_coverage' => $normalized['min_days_coverage']
+                ]
+            );
+            $statusNew = determineStatus($daysCoverageNew, $normalized['min_days_coverage']);
+            $resolvedDaily = resolveDailyConsumption($normalized['daily_consumption'], [
+                'category' => $normalized['category'],
+                'effective_stock' => $totalStockNew,
+                'min_days_coverage' => $normalized['min_days_coverage']
+            ]);
+
+            $pdo->beginTransaction();
+
+            $columns = [
+                'name',
+                'category',
+                'field_stock',
+                'unit',
+                'unit_conversion',
+                'daily_consumption',
+                'min_days_coverage',
+                'description',
+                'added_by',
+                'status'
+            ];
+            $placeholders = [
+                ':name',
+                ':category',
+                ':field_stock',
+                ':unit',
+                ':unit_conversion',
+                ':daily_consumption',
+                ':min_days_coverage',
+                ':description',
+                ':added_by',
+                ':status'
+            ];
+
+            if (!empty($schema['items_has_warehouse_stock'])) {
+                array_splice($columns, 3, 0, 'warehouse_stock');
+                array_splice($placeholders, 3, 0, ':warehouse_stock');
+            }
+            if (!empty($schema['items_has_calculation_type'])) {
+                $insertPos = count($columns) - 1;
+                array_splice($columns, $insertPos, 0, 'calculation_type');
+                array_splice($placeholders, $insertPos, 0, ':calculation_type');
+            }
+            if (!empty($schema['items_has_level_value'])) {
+                array_splice($columns, 8, 0, 'level');
+                array_splice($placeholders, 8, 0, ':level');
+            }
+            if (!empty($schema['items_has_level_flag'])) {
+                array_splice($columns, 8, 0, 'has_level');
+                array_splice($placeholders, 8, 0, ':has_level');
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO items (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')');
+            $params = [
+                ':name' => $normalized['name'],
+                ':category' => $normalized['category'],
+                ':field_stock' => $normalized['field_stock'],
+                ':unit' => $normalized['unit'],
+                ':unit_conversion' => $normalized['unit_conversion'],
+                ':daily_consumption' => $normalized['daily_consumption'],
+                ':min_days_coverage' => $normalized['min_days_coverage'],
+                ':description' => $normalized['description'],
+                ':added_by' => (int)$userId,
+                ':status' => $statusNew,
+            ];
+
+            if (!empty($schema['items_has_warehouse_stock'])) {
+                $params[':warehouse_stock'] = $warehouseStock;
+            }
+            if (!empty($schema['items_has_calculation_type'])) {
+                $params[':calculation_type'] = 'daily_consumption';
+            }
+            if (!empty($schema['items_has_level_value'])) {
+                $params[':level'] = $normalized['level'];
+            }
+            if (!empty($schema['items_has_level_flag'])) {
+                $params[':has_level'] = $normalized['has_level'];
+            }
+
+            $stmt->execute($params);
+            $newItemId = (int)$pdo->lastInsertId();
+
+            $history = buildItemHistoryInsert(
+                $schema,
+                [
+                    'item_id' => $newItemId,
+                    'item_name' => $normalized['name'],
+                    'category' => $normalized['category'],
+                    'action' => 'insert',
+                    'field_stock_old' => null,
+                    'field_stock_new' => $normalized['field_stock'],
+                    'status_old' => null,
+                    'status_new' => $statusNew,
+                    'total_stock_old' => null,
+                    'total_stock_new' => $totalStockNew,
+                    'days_coverage_old' => null,
+                    'days_coverage_new' => $daysCoverageNew,
+                    'unit' => $normalized['unit'],
+                    'unit_conversion' => $normalized['unit_conversion'],
+                    'daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $normalized['daily_consumption'],
+                    'min_days_coverage' => $normalized['min_days_coverage'],
+                    'changed_by' => (int)$userId,
+                    'note' => 'initial insert (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')',
+                    'warehouse_stock_old' => null,
+                    'warehouse_stock_new' => $warehouseStock,
+                    'level' => $normalized['level'],
+                ]
+            );
+
+            $histStmt = $pdo->prepare($history['sql']);
+            $histStmt->execute($history['params']);
+
+            $pdo->commit();
+            $result['success'] = true;
+            $result['item_id'] = $newItemId;
+            return $result;
+        }
+
+        $stmtOld = $pdo->prepare('SELECT * FROM items WHERE id = ? AND ' . activeItemsWhereSql());
+        $stmtOld->execute([$itemId]);
+        $old = $stmtOld->fetch(PDO::FETCH_ASSOC);
+        if (!$old) {
+            $result['message'] = 'Barang tidak ditemukan atau sudah diarsipkan.';
+            return $result;
+        }
+
+        $pdo->beginTransaction();
+
+        $newTotal = ($normalized['field_stock']) * $normalized['unit_conversion'];
+        $newDays = calculateDaysCoverage(
+            $normalized['field_stock'],
+            0,
+            $normalized['unit_conversion'],
+            $normalized['daily_consumption'],
+            $normalized['name'],
+            $normalized['level'],
+            (bool)$normalized['has_level'],
+            [
+                'item_id' => $itemId,
+                'category' => $normalized['category'],
+                'min_days_coverage' => $normalized['min_days_coverage']
+            ]
+        );
+        $resolvedDaily = resolveDailyConsumption($normalized['daily_consumption'], [
+            'item_id' => $itemId,
+            'category' => $normalized['category'],
+            'effective_stock' => $newTotal,
+            'min_days_coverage' => $normalized['min_days_coverage']
+        ]);
+        $newStatus = determineStatus($newDays, $normalized['min_days_coverage']);
+
+        $set = [
+            'name = :name',
+            'category = :category',
+            'field_stock = :field_stock',
+            'unit = :unit',
+            'unit_conversion = :unit_conversion',
+            'daily_consumption = :daily_consumption',
+            'min_days_coverage = :min_days_coverage',
+            'description = :description',
+            'updated_by = :updated_by',
+            'status = :status'
+        ];
+        if (!empty($schema['items_has_level_value'])) {
+            $set[] = 'level = :level';
+        }
+        if (!empty($schema['items_has_level_flag'])) {
+            $set[] = 'has_level = :has_level';
+        }
+
+        $stmtUpdate = $pdo->prepare('UPDATE items SET ' . implode(', ', $set) . ' WHERE id = :id AND ' . activeItemsWhereSql());
+        $updateParams = [
+            ':name' => $normalized['name'],
+            ':category' => $normalized['category'],
+            ':field_stock' => $normalized['field_stock'],
+            ':unit' => $normalized['unit'],
+            ':unit_conversion' => $normalized['unit_conversion'],
+            ':daily_consumption' => $normalized['daily_consumption'],
+            ':min_days_coverage' => $normalized['min_days_coverage'],
+            ':description' => $normalized['description'],
+            ':updated_by' => (int)$userId,
+            ':status' => $newStatus,
+            ':id' => $itemId,
+        ];
+        if (!empty($schema['items_has_level_value'])) {
+            $updateParams[':level'] = $normalized['level'];
+        }
+        if (!empty($schema['items_has_level_flag'])) {
+            $updateParams[':has_level'] = $normalized['has_level'];
+        }
+
+        $stmtUpdate->execute($updateParams);
+
+        $oldTotal = ((float)($old['field_stock'] ?? 0)) * ((float)($old['unit_conversion'] ?? 1));
+        $oldHasLevel = isset($old['has_level']) ? (bool)$old['has_level'] : false;
+        $oldDays = calculateDaysCoverage(
+            (float)($old['field_stock'] ?? 0),
+            0,
+            (float)($old['unit_conversion'] ?? 1),
+            (float)($old['daily_consumption'] ?? 0),
+            (string)($old['name'] ?? ''),
+            array_key_exists('level', $old) ? $old['level'] : null,
+            $oldHasLevel,
+            [
+                'item_id' => $itemId,
+                'category' => (string)($old['category'] ?? ''),
+                'min_days_coverage' => (int)($old['min_days_coverage'] ?? 1)
+            ]
+        );
+
+        $history = buildItemHistoryInsert(
+            $schema,
+            [
+                'item_id' => $itemId,
+                'item_name' => $normalized['name'],
+                'category' => $normalized['category'],
+                'action' => 'update',
+                'field_stock_old' => (float)($old['field_stock'] ?? 0),
+                'field_stock_new' => $normalized['field_stock'],
+                'status_old' => (string)($old['status'] ?? ''),
+                'status_new' => $newStatus,
+                'total_stock_old' => $oldTotal,
+                'total_stock_new' => $newTotal,
+                'days_coverage_old' => $oldDays,
+                'days_coverage_new' => $newDays,
+                'unit' => $normalized['unit'],
+                'unit_conversion' => $normalized['unit_conversion'],
+                'daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $normalized['daily_consumption'],
+                'min_days_coverage' => $normalized['min_days_coverage'],
+                'changed_by' => (int)$userId,
+                'note' => 'updated via centralized handler (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')',
+                'warehouse_stock_old' => $warehouseStock,
+                'warehouse_stock_new' => $warehouseStock,
+                'level' => $normalized['level'],
+            ]
+        );
+
+        $histStmt = $pdo->prepare($history['sql']);
+        $histStmt->execute($history['params']);
+
+        $pdo->commit();
+        $result['success'] = true;
+        $result['item_id'] = $itemId;
+        return $result;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $result['message'] = $e->getMessage();
+        return $result;
+    }
+}
+
+function buildItemHistoryInsert(array $schema, array $payload)
+{
+    $columns = [
+        'item_id',
+        'item_name',
+        'category',
+        'action',
+        'field_stock_old',
+        'field_stock_new',
+        'status_old',
+        'status_new',
+        'total_stock_old',
+        'total_stock_new',
+        'days_coverage_old',
+        'days_coverage_new',
+        'unit',
+        'unit_conversion',
+        'daily_consumption',
+        'min_days_coverage',
+        'changed_by',
+        'note'
+    ];
+
+    $values = [
+        ':item_id',
+        ':item_name',
+        ':category',
+        ':action',
+        ':field_stock_old',
+        ':field_stock_new',
+        ':status_old',
+        ':status_new',
+        ':total_stock_old',
+        ':total_stock_new',
+        ':days_coverage_old',
+        ':days_coverage_new',
+        ':unit',
+        ':unit_conversion',
+        ':daily_consumption',
+        ':min_days_coverage',
+        ':changed_by',
+        ':note'
+    ];
+
+    if (!empty($schema['hist_has_warehouse_old'])) {
+        array_splice($columns, 6, 0, 'warehouse_stock_old');
+        array_splice($values, 6, 0, ':warehouse_stock_old');
+    }
+    if (!empty($schema['hist_has_warehouse_new'])) {
+        $insertPos = !empty($schema['hist_has_warehouse_old']) ? 7 : 6;
+        array_splice($columns, $insertPos, 0, 'warehouse_stock_new');
+        array_splice($values, $insertPos, 0, ':warehouse_stock_new');
+    }
+    if (!empty($schema['hist_has_level'])) {
+        array_splice($columns, 15, 0, 'level');
+        array_splice($values, 15, 0, ':level');
+    }
+
+    $params = [
+        ':item_id' => $payload['item_id'],
+        ':item_name' => $payload['item_name'],
+        ':category' => $payload['category'],
+        ':action' => $payload['action'],
+        ':field_stock_old' => $payload['field_stock_old'],
+        ':field_stock_new' => $payload['field_stock_new'],
+        ':status_old' => $payload['status_old'],
+        ':status_new' => $payload['status_new'],
+        ':total_stock_old' => $payload['total_stock_old'],
+        ':total_stock_new' => $payload['total_stock_new'],
+        ':days_coverage_old' => $payload['days_coverage_old'],
+        ':days_coverage_new' => $payload['days_coverage_new'],
+        ':unit' => $payload['unit'],
+        ':unit_conversion' => $payload['unit_conversion'],
+        ':daily_consumption' => $payload['daily_consumption'],
+        ':min_days_coverage' => $payload['min_days_coverage'],
+        ':changed_by' => $payload['changed_by'],
+        ':note' => $payload['note'],
+    ];
+
+    if (!empty($schema['hist_has_warehouse_old'])) {
+        $params[':warehouse_stock_old'] = $payload['warehouse_stock_old'];
+    }
+    if (!empty($schema['hist_has_warehouse_new'])) {
+        $params[':warehouse_stock_new'] = $payload['warehouse_stock_new'];
+    }
+    if (!empty($schema['hist_has_level'])) {
+        $params[':level'] = $payload['level'];
+    }
+
+    return [
+        'sql' => 'INSERT INTO item_stock_history (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')',
+        'params' => $params,
+    ];
+}
+
 // Role helpers
 function currentUserRole()
 {
