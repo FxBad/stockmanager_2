@@ -17,7 +17,9 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
-	const viewTable = document.querySelector(".view-page .table-container table");
+	const viewTable = document.querySelector(
+		".view-page .table-container table",
+	);
 	if (!viewTable) return;
 
 	function closeAllQuickPreviews(exceptId) {
@@ -65,7 +67,9 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 
 		if (options.focusHistory) {
-			const historyBlock = previewRow.querySelector(".preview-history-block");
+			const historyBlock = previewRow.querySelector(
+				".preview-history-block",
+			);
 			if (historyBlock) {
 				historyBlock.scrollIntoView({
 					behavior: "smooth",
