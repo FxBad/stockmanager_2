@@ -850,8 +850,12 @@ document.addEventListener("DOMContentLoaded", function () {
 	const sortFilter = document.getElementById("advanced-sort");
 	const dirFilter = document.getElementById("advanced-dir");
 	const totalSummaryValue = document.getElementById("summary-total-items");
-	const criticalSummaryValue = document.getElementById("summary-critical-items");
-	const filterCountLabel = document.getElementById("summary-filter-count-label");
+	const criticalSummaryValue = document.getElementById(
+		"summary-critical-items",
+	);
+	const filterCountLabel = document.getElementById(
+		"summary-filter-count-label",
+	);
 	const filterForm = searchInput ? searchInput.closest("form") : null;
 	const categoryFilter = filterForm
 		? filterForm.querySelector('select[name="category"]')
@@ -870,8 +874,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	const storageKey = "stockmanager.view.filters.v1";
 	const defaultSort =
 		(filterForm && filterForm.dataset.defaultSort) || "name";
-	const defaultDir =
-		(filterForm && filterForm.dataset.defaultDir) || "asc";
+	const defaultDir = (filterForm && filterForm.dataset.defaultDir) || "asc";
 
 	// Debounce function to limit API calls
 	function debounce(func, delay) {
@@ -1177,15 +1180,15 @@ document.addEventListener("DOMContentLoaded", function () {
 			button.type = "button";
 			button.className = "summary-filter-chip summary-filter-chip-action";
 			button.dataset.filterKey = chip.key;
-			button.innerHTML =
-				`<span>${chip.label}</span><i class='bx bx-x' aria-hidden="true"></i>`;
+			button.innerHTML = `<span>${chip.label}</span><i class='bx bx-x' aria-hidden="true"></i>`;
 			chipsContainer.appendChild(button);
 		});
 	}
 
 	function clearFilterByKey(filterKey) {
 		if (filterKey === "search") searchInput.value = "";
-		if (filterKey === "category" && categoryFilter) categoryFilter.value = "";
+		if (filterKey === "category" && categoryFilter)
+			categoryFilter.value = "";
 		if (filterKey === "status" && statusFilter) statusFilter.value = "";
 		if (filterKey === "sort" && sortFilter) sortFilter.value = defaultSort;
 		if (filterKey === "dir" && dirFilter) dirFilter.value = defaultDir;
