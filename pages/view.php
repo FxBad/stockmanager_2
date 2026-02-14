@@ -102,6 +102,7 @@ if ($status !== '') {
 
 $totalItemsCount = count($items);
 $activeFilterCount = count($activeFilters);
+$sortDirValue = strtolower($sortDir) === 'desc' ? 'desc' : 'asc';
 
 // Show warehouse stock and daily consumption only to office and admin
 $showSensitive = isRole('office') || isRole('admin');
@@ -145,56 +146,85 @@ $colspan = $colCount;
             <section class="view-summary" aria-label="Ringkasan data stok">
                 <article class="summary-card">
                     <p class="summary-label">Total Item Ditampilkan</p>
-                    <p class="summary-value"><?php echo number_format($totalItemsCount); ?></p>
+                    <p class="summary-value" id="summary-total-items"><?php echo number_format($totalItemsCount); ?></p>
                 </article>
                 <article class="summary-card summary-card-critical">
                     <p class="summary-label">Item Stok Kritis</p>
-                    <p class="summary-value"><?php echo number_format($criticalItemsCount); ?></p>
+                    <p class="summary-value" id="summary-critical-items"><?php echo number_format($criticalItemsCount); ?></p>
                 </article>
                 <article class="summary-card summary-card-filters">
-                    <p class="summary-label">Filter Aktif (<?php echo $activeFilterCount; ?>)</p>
-                    <?php if ($activeFilterCount > 0): ?>
-                        <div class="summary-filter-chips" aria-label="Filter aktif saat ini">
-                            <?php foreach ($activeFilters as $activeFilter): ?>
-                                <span class="summary-filter-chip"><?php echo htmlspecialchars($activeFilter); ?></span>
-                            <?php endforeach; ?>
+                    <p class="summary-label" id="summary-filter-count-label">Filter Aktif (<?php echo $activeFilterCount; ?>)</p>
+                    <div class="summary-filter-actions">
+                        <div id="active-filter-chips" class="summary-filter-chips" aria-label="Filter aktif saat ini">
+                            <?php if ($activeFilterCount > 0): ?>
+                                <?php foreach ($activeFilters as $activeFilter): ?>
+                                    <span class="summary-filter-chip"><?php echo htmlspecialchars($activeFilter); ?></span>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <p class="summary-muted" id="summary-filter-empty">Semua data tanpa filter</p>
+                            <?php endif; ?>
                         </div>
-                    <?php else: ?>
-                        <p class="summary-muted">Semua data tanpa filter</p>
-                    <?php endif; ?>
+                        <button type="button" id="reset-filters-btn" class="btn-reset-filters">Reset Semua</button>
+                    </div>
                 </article>
             </section>
 
             <!-- Search and Filter Section -->
             <div class="table-header">
                 <form method="GET" class="table-filters" data-filter-context="view" data-default-sort="name" data-default-dir="asc">
-                    <div class="search-box">
-                        <i class='bx bx-search'></i>
-                        <input type="text" name="search" id="search-input" placeholder="Cari barang..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
-                        <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Hapus pencarian">&times;</button>
-                        <div id="autocomplete-list" class="autocomplete-items"></div>
+                    <div class="filter-primary-row">
+                        <div class="search-box">
+                            <i class='bx bx-search'></i>
+                            <input type="text" name="search" id="search-input" placeholder="Cari barang..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
+                            <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Hapus pencarian">&times;</button>
+                            <div id="autocomplete-list" class="autocomplete-items"></div>
+                        </div>
+
+                        <div class="filter-group filter-group-primary">
+                            <select name="category" id="filter-category">
+                                <option value="">Semua Kategori</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo $category === $cat ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($cat); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <select name="status" id="filter-status">
+                                <option value="">Semua Status</option>
+                                <option value="in-stock" <?php echo $status === 'in-stock' ? 'selected' : ''; ?>><?php echo translateStatus('in-stock', 'id'); ?></option>
+                                <option value="low-stock" <?php echo $status === 'low-stock' ? 'selected' : ''; ?>><?php echo translateStatus('low-stock', 'id'); ?></option>
+                                <option value="warning-stock" <?php echo $status === 'warning-stock' ? 'selected' : ''; ?>><?php echo translateStatus('warning-stock', 'id'); ?></option>
+                                <option value="out-stock" <?php echo $status === 'out-stock' ? 'selected' : ''; ?>><?php echo translateStatus('out-stock', 'id'); ?></option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="filter-group">
-                        <select name="category">
-                            <option value="">Semua Kategori</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo $category === $cat ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($cat); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-
-                        <select name="status">
-                            <option value="">Semua Status</option>
-                            <option value="in-stock" <?php echo $status === 'in-stock' ? 'selected' : ''; ?>><?php echo translateStatus('in-stock', 'id'); ?></option>
-                            <option value="low-stock" <?php echo $status === 'low-stock' ? 'selected' : ''; ?>><?php echo translateStatus('low-stock', 'id'); ?></option>
-                            <option value="warning-stock" <?php echo $status === 'warning-stock' ? 'selected' : ''; ?>><?php echo translateStatus('warning-stock', 'id'); ?></option>
-                            <option value="out-stock" <?php echo $status === 'out-stock' ? 'selected' : ''; ?>><?php echo translateStatus('out-stock', 'id'); ?></option>
-                        </select>
-
-                        <button type="submit" class="btn-filter">Terapkan Filter</button>
+                    <div class="filter-advanced-row">
+                        <button type="button" id="toggle-advanced-filters" class="btn-filter-advanced" aria-expanded="false" aria-controls="advanced-filters-panel">
+                            <i class='bx bx-slider-alt'></i>
+                            Filter Lainnya
+                        </button>
+                        <div id="advanced-filters-panel" class="advanced-filters-panel" hidden>
+                            <div class="filter-group">
+                                <label for="advanced-sort">Urutkan</label>
+                                <select name="sort" id="advanced-sort">
+                                    <option value="name" <?php echo $sortBy === 'name' ? 'selected' : ''; ?>>Nama Barang</option>
+                                    <option value="category" <?php echo $sortBy === 'category' ? 'selected' : ''; ?>>Kategori</option>
+                                    <option value="field_stock" <?php echo $sortBy === 'field_stock' ? 'selected' : ''; ?>>Stok</option>
+                                    <option value="last_updated" <?php echo $sortBy === 'last_updated' ? 'selected' : ''; ?>>Terakhir Diperbarui</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="advanced-dir">Arah</label>
+                                <select name="dir" id="advanced-dir">
+                                    <option value="asc" <?php echo $sortDirValue === 'asc' ? 'selected' : ''; ?>>Naik (A-Z / Lama-Baru)</option>
+                                    <option value="desc" <?php echo $sortDirValue === 'desc' ? 'selected' : ''; ?>>Turun (Z-A / Baru-Lama)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
+                    <noscript><button type="submit" class="btn-filter">Terapkan Filter</button></noscript>
                 </form>
             </div>
 

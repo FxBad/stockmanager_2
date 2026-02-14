@@ -841,6 +841,17 @@ document.addEventListener("DOMContentLoaded", function () {
 	const searchInput = document.getElementById("search-input");
 	const autocompleteList = document.getElementById("autocomplete-list");
 	const clearButton = document.getElementById("search-clear-btn");
+	const chipsContainer = document.getElementById("active-filter-chips");
+	const resetFiltersButton = document.getElementById("reset-filters-btn");
+	const advancedToggleButton = document.getElementById(
+		"toggle-advanced-filters",
+	);
+	const advancedPanel = document.getElementById("advanced-filters-panel");
+	const sortFilter = document.getElementById("advanced-sort");
+	const dirFilter = document.getElementById("advanced-dir");
+	const totalSummaryValue = document.getElementById("summary-total-items");
+	const criticalSummaryValue = document.getElementById("summary-critical-items");
+	const filterCountLabel = document.getElementById("summary-filter-count-label");
 	const filterForm = searchInput ? searchInput.closest("form") : null;
 	const categoryFilter = filterForm
 		? filterForm.querySelector('select[name="category"]')
@@ -853,8 +864,14 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (!searchInput || !autocompleteList) return;
 
 	let debounceTimer;
+	let applyTimer;
 	let currentFocus = -1;
 	let activeFilterController = null;
+	const storageKey = "stockmanager.view.filters.v1";
+	const defaultSort =
+		(filterForm && filterForm.dataset.defaultSort) || "name";
+	const defaultDir =
+		(filterForm && filterForm.dataset.defaultDir) || "asc";
 
 	// Debounce function to limit API calls
 	function debounce(func, delay) {
@@ -955,23 +972,74 @@ document.addEventListener("DOMContentLoaded", function () {
 		clearButton.classList.toggle("show", searchInput.value.length > 0);
 	}
 
-	function getSortParams() {
-		const urlParams = new URLSearchParams(window.location.search);
-		const defaultSort =
-			(filterForm && filterForm.dataset.defaultSort) || "name";
-		const defaultDir =
-			(filterForm && filterForm.dataset.defaultDir) || "asc";
+	function getCurrentState() {
 		return {
+			search: searchInput.value.trim(),
+			category: categoryFilter ? categoryFilter.value : "",
+			status: statusFilter ? statusFilter.value : "",
+			sort: sortFilter ? sortFilter.value : defaultSort,
+			dir: dirFilter ? dirFilter.value : defaultDir,
+		};
+	}
+
+	function applyStateToControls(state) {
+		if (!state) return;
+		searchInput.value = state.search || "";
+		if (categoryFilter) categoryFilter.value = state.category || "";
+		if (statusFilter) statusFilter.value = state.status || "";
+		if (sortFilter) sortFilter.value = state.sort || defaultSort;
+		if (dirFilter) dirFilter.value = state.dir || defaultDir;
+	}
+
+	function saveState(state) {
+		try {
+			sessionStorage.setItem(storageKey, JSON.stringify(state));
+		} catch (error) {
+			console.warn("Cannot persist filter state", error);
+		}
+	}
+
+	function getStoredState() {
+		try {
+			const raw = sessionStorage.getItem(storageKey);
+			if (!raw) return null;
+			const parsed = JSON.parse(raw);
+			if (!parsed || typeof parsed !== "object") return null;
+			return parsed;
+		} catch (error) {
+			return null;
+		}
+	}
+
+	function stateFromUrl() {
+		const urlParams = new URLSearchParams(window.location.search);
+		return {
+			search: urlParams.get("search") || "",
+			category: urlParams.get("category") || "",
+			status: urlParams.get("status") || "",
 			sort: urlParams.get("sort") || defaultSort,
 			dir: urlParams.get("dir") || defaultDir,
 		};
 	}
 
-	function syncFilterQueryToUrl() {
+	function hasAnyQueryParams() {
+		const query = new URLSearchParams(window.location.search);
+		return (
+			query.has("search") ||
+			query.has("category") ||
+			query.has("status") ||
+			query.has("sort") ||
+			query.has("dir")
+		);
+	}
+
+	function syncFilterQueryToUrl(state) {
 		const url = new URL(window.location.href);
-		const nextSearch = searchInput.value.trim();
-		const nextCategory = categoryFilter ? categoryFilter.value : "";
-		const nextStatus = statusFilter ? statusFilter.value : "";
+		const nextSearch = state.search;
+		const nextCategory = state.category;
+		const nextStatus = state.status;
+		const nextSort = state.sort || defaultSort;
+		const nextDir = state.dir || defaultDir;
 
 		if (nextSearch) {
 			url.searchParams.set("search", nextSearch);
@@ -991,6 +1059,18 @@ document.addEventListener("DOMContentLoaded", function () {
 			url.searchParams.delete("status");
 		}
 
+		if (nextSort && nextSort !== defaultSort) {
+			url.searchParams.set("sort", nextSort);
+		} else {
+			url.searchParams.delete("sort");
+		}
+
+		if (nextDir && nextDir !== defaultDir) {
+			url.searchParams.set("dir", nextDir);
+		} else {
+			url.searchParams.delete("dir");
+		}
+
 		history.replaceState(
 			null,
 			"",
@@ -998,25 +1078,142 @@ document.addEventListener("DOMContentLoaded", function () {
 		);
 	}
 
+	function updateSummaryCounts() {
+		if (!tableBody) return;
+		const rows = tableBody.querySelectorAll("tr");
+		let dataRows = 0;
+		let criticalRows = 0;
+
+		rows.forEach((row) => {
+			const noDataCell = row.querySelector("td.no-data");
+			if (noDataCell) return;
+			dataRows += 1;
+			const statusEl = row.querySelector("span.status");
+			if (
+				statusEl &&
+				(statusEl.classList.contains("low-stock") ||
+					statusEl.classList.contains("warning-stock") ||
+					statusEl.classList.contains("out-stock"))
+			) {
+				criticalRows += 1;
+			}
+		});
+
+		if (totalSummaryValue) {
+			totalSummaryValue.textContent = dataRows.toLocaleString("id-ID");
+		}
+		if (criticalSummaryValue) {
+			criticalSummaryValue.textContent =
+				criticalRows.toLocaleString("id-ID");
+		}
+	}
+
+	function renderFilterChips(state) {
+		if (!chipsContainer) return;
+		chipsContainer.innerHTML = "";
+
+		const chipConfigs = [];
+		if (state.search) {
+			chipConfigs.push({
+				key: "search",
+				label: `Cari: ${state.search}`,
+			});
+		}
+		if (state.category) {
+			chipConfigs.push({
+				key: "category",
+				label: `Kategori: ${state.category}`,
+			});
+		}
+		if (state.status) {
+			let statusLabel = state.status;
+			if (statusFilter) {
+				const selected = statusFilter.querySelector(
+					`option[value="${state.status}"]`,
+				);
+				if (selected) statusLabel = selected.textContent.trim();
+			}
+			chipConfigs.push({
+				key: "status",
+				label: `Status: ${statusLabel}`,
+			});
+		}
+		if (state.sort && state.sort !== defaultSort) {
+			let sortLabel = state.sort;
+			if (sortFilter) {
+				const selected = sortFilter.querySelector(
+					`option[value="${state.sort}"]`,
+				);
+				if (selected) sortLabel = selected.textContent.trim();
+			}
+			chipConfigs.push({
+				key: "sort",
+				label: `Urut: ${sortLabel}`,
+			});
+		}
+		if (state.dir && state.dir !== defaultDir) {
+			const dirLabel = state.dir === "desc" ? "Turun" : "Naik";
+			chipConfigs.push({
+				key: "dir",
+				label: `Arah: ${dirLabel}`,
+			});
+		}
+
+		if (filterCountLabel) {
+			filterCountLabel.textContent = `Filter Aktif (${chipConfigs.length})`;
+		}
+
+		if (!chipConfigs.length) {
+			const empty = document.createElement("p");
+			empty.className = "summary-muted";
+			empty.id = "summary-filter-empty";
+			empty.textContent = "Semua data tanpa filter";
+			chipsContainer.appendChild(empty);
+			return;
+		}
+
+		chipConfigs.forEach((chip) => {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "summary-filter-chip summary-filter-chip-action";
+			button.dataset.filterKey = chip.key;
+			button.innerHTML =
+				`<span>${chip.label}</span><i class='bx bx-x' aria-hidden="true"></i>`;
+			chipsContainer.appendChild(button);
+		});
+	}
+
+	function clearFilterByKey(filterKey) {
+		if (filterKey === "search") searchInput.value = "";
+		if (filterKey === "category" && categoryFilter) categoryFilter.value = "";
+		if (filterKey === "status" && statusFilter) statusFilter.value = "";
+		if (filterKey === "sort" && sortFilter) sortFilter.value = defaultSort;
+		if (filterKey === "dir" && dirFilter) dirFilter.value = defaultDir;
+		toggleClearButton();
+		runApply();
+	}
+
 	async function updateTableRows() {
 		if (!tableBody || !filterForm) return;
+		const currentState = getCurrentState();
 
-		syncFilterQueryToUrl();
+		syncFilterQueryToUrl(currentState);
+		saveState(currentState);
+		renderFilterChips(currentState);
 
 		if (activeFilterController) {
 			activeFilterController.abort();
 		}
 
 		activeFilterController = new AbortController();
-		const sortParams = getSortParams();
 		const filterContext =
 			(filterForm && filterForm.dataset.filterContext) || "view";
 		const params = new URLSearchParams({
-			search: searchInput.value,
-			category: categoryFilter ? categoryFilter.value : "",
-			status: statusFilter ? statusFilter.value : "",
-			sort: sortParams.sort,
-			dir: sortParams.dir,
+			search: currentState.search,
+			category: currentState.category,
+			status: currentState.status,
+			sort: currentState.sort,
+			dir: currentState.dir,
 			context: filterContext,
 		});
 
@@ -1038,6 +1235,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			const data = await response.json();
 			if (typeof data.html === "string") {
 				tableBody.innerHTML = data.html;
+				updateSummaryCounts();
 			}
 		} catch (error) {
 			if (error.name !== "AbortError") {
@@ -1046,14 +1244,21 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 	}
 
+	function runApply(delay) {
+		clearTimeout(applyTimer);
+		if (delay && delay > 0) {
+			applyTimer = setTimeout(updateTableRows, delay);
+			return;
+		}
+		updateTableRows();
+	}
+
 	// Select an item from dropdown
 	function selectItem(value) {
 		searchInput.value = value;
 		hideAutocomplete();
 		toggleClearButton();
-		updateTableRows();
-		// Optionally submit the form automatically
-		// searchInput.closest('form').submit();
+		runApply();
 	}
 
 	// Add active class to items
@@ -1107,18 +1312,30 @@ document.addEventListener("DOMContentLoaded", function () {
 	);
 
 	searchInput.addEventListener("input", function () {
-		updateTableRows();
+		runApply(400);
 	});
 
 	if (categoryFilter) {
 		categoryFilter.addEventListener("change", function () {
-			updateTableRows();
+			runApply();
 		});
 	}
 
 	if (statusFilter) {
 		statusFilter.addEventListener("change", function () {
-			updateTableRows();
+			runApply();
+		});
+	}
+
+	if (sortFilter) {
+		sortFilter.addEventListener("change", function () {
+			runApply();
+		});
+	}
+
+	if (dirFilter) {
+		dirFilter.addEventListener("change", function () {
+			runApply();
 		});
 	}
 
@@ -1139,14 +1356,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	// Prevent form submission when autocomplete is open and user presses Enter
 	searchInput.closest("form").addEventListener("submit", function (e) {
+		e.preventDefault();
 		if (autocompleteList.classList.contains("show")) {
 			const items =
 				autocompleteList.querySelectorAll(".autocomplete-item");
 			if (currentFocus > -1 && items[currentFocus]) {
-				e.preventDefault();
 				selectItem(items[currentFocus].dataset.value);
+				return;
 			}
 		}
+		runApply();
 	});
 
 	if (clearButton) {
@@ -1154,10 +1373,81 @@ document.addEventListener("DOMContentLoaded", function () {
 			searchInput.value = "";
 			hideAutocomplete();
 			toggleClearButton();
-			updateTableRows();
+			runApply();
 			searchInput.focus();
 		});
 	}
 
+	if (chipsContainer) {
+		chipsContainer.addEventListener("click", function (event) {
+			const removeButton = event.target.closest("[data-filter-key]");
+			if (!removeButton) return;
+			clearFilterByKey(removeButton.dataset.filterKey || "");
+		});
+	}
+
+	if (resetFiltersButton) {
+		resetFiltersButton.addEventListener("click", function () {
+			searchInput.value = "";
+			if (categoryFilter) categoryFilter.value = "";
+			if (statusFilter) statusFilter.value = "";
+			if (sortFilter) sortFilter.value = defaultSort;
+			if (dirFilter) dirFilter.value = defaultDir;
+			toggleClearButton();
+			hideAutocomplete();
+			runApply();
+		});
+	}
+
+	if (advancedToggleButton && advancedPanel) {
+		advancedToggleButton.addEventListener("click", function () {
+			const isExpanded =
+				advancedToggleButton.getAttribute("aria-expanded") === "true";
+			advancedToggleButton.setAttribute(
+				"aria-expanded",
+				isExpanded ? "false" : "true",
+			);
+			advancedPanel.hidden = isExpanded;
+		});
+	}
+
+	const currentUrlState = stateFromUrl();
+	applyStateToControls(currentUrlState);
+
+	if (!hasAnyQueryParams()) {
+		const persistedState = getStoredState();
+		if (persistedState) {
+			applyStateToControls({
+				search: persistedState.search || "",
+				category: persistedState.category || "",
+				status: persistedState.status || "",
+				sort: persistedState.sort || defaultSort,
+				dir: persistedState.dir || defaultDir,
+			});
+		}
+	}
+
+	if (sortFilter && sortFilter.value !== defaultSort) {
+		if (advancedPanel) advancedPanel.hidden = false;
+		if (advancedToggleButton) {
+			advancedToggleButton.setAttribute("aria-expanded", "true");
+		}
+	}
+
+	if (dirFilter && dirFilter.value !== defaultDir) {
+		if (advancedPanel) advancedPanel.hidden = false;
+		if (advancedToggleButton) {
+			advancedToggleButton.setAttribute("aria-expanded", "true");
+		}
+	}
+
 	toggleClearButton();
+	renderFilterChips(getCurrentState());
+	updateSummaryCounts();
+
+	if (!hasAnyQueryParams() && getStoredState()) {
+		runApply();
+	} else {
+		saveState(getCurrentState());
+	}
 });
