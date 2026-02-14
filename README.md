@@ -61,6 +61,17 @@ Untuk mendukung mode kalkulasi per item (`combined` dan `multiplied`):
 - Menambahkan kolom baru: `items.calculation_mode`
 - Form tambah/edit barang kini memiliki dropdown mode perhitungan saat indikator level aktif.
 
+### Definisi mode perhitungan
+
+- `combined`: `effective_stock = (level * level_conversion) + (field_stock * unit_conversion)`
+- `multiplied`: `effective_stock = custom_conversion_factor * level * field_stock`
+
+Catatan implementasi:
+
+- Pada mode `multiplied`, input `custom_conversion_factor` dipakai sebagai faktor efektif perhitungan.
+- Nilai faktor efektif tersebut disimpan ke kolom `items.level_conversion` agar tetap kompatibel dengan skema saat ini (tanpa kolom baru khusus custom factor).
+- Pada mode `combined`, nilai `items.level_conversion` dipakai langsung sebagai faktor level.
+
 ## Status Deprecated (Per 2026-02-14)
 
 Elemen berikut telah ditetapkan sebagai **deprecated** dan dipertahankan sementara untuk kompatibilitas transisi:
