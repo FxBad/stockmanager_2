@@ -303,20 +303,42 @@ function initLevelToggle(root = document) {
 	const nameEl = root.querySelector("#name");
 	const hasLevelEl = root.querySelector("#has_level");
 	const levelGroup = root.querySelector("#level-group");
+	const unitConversionGroup = root.querySelector("#unit-group-conversion");
 	const levelConversionGroup = root.querySelector("#level-group-conversion");
 	const levelModeGroup = root.querySelector("#level-group-mode");
 	const levelModeSelect = root.querySelector("#calculation_mode");
+	const customConversionGroup = root.querySelector(
+		"#level-group-custom-conversion",
+	);
+	const customConversionInput = root.querySelector(
+		"#custom_conversion_factor",
+	);
 	if (!levelGroup) return;
 	function toggle() {
+		const currentMode = levelModeSelect
+			? String(levelModeSelect.value || "combined").toLowerCase()
+			: "combined";
 		if (hasLevelEl) {
-			levelGroup.style.display = hasLevelEl.checked ? "" : "none";
+			const levelEnabled = hasLevelEl.checked;
+			const useMultiplied = levelEnabled && currentMode === "multiplied";
+			levelGroup.style.display = levelEnabled ? "" : "none";
+			if (unitConversionGroup) {
+				unitConversionGroup.style.display = useMultiplied ? "none" : "";
+			}
 			if (levelConversionGroup) {
-				levelConversionGroup.style.display = hasLevelEl.checked
+				levelConversionGroup.style.display =
+					levelEnabled && !useMultiplied ? "" : "none";
+			}
+			if (levelModeGroup) {
+				levelModeGroup.style.display = levelEnabled ? "" : "none";
+			}
+			if (customConversionGroup) {
+				customConversionGroup.style.display = useMultiplied
 					? ""
 					: "none";
 			}
-			if (levelModeGroup) {
-				levelModeGroup.style.display = hasLevelEl.checked ? "" : "none";
+			if (customConversionInput) {
+				customConversionInput.required = useMultiplied;
 			}
 			if (!hasLevelEl.checked && levelModeSelect) {
 				levelModeSelect.value = "combined";
@@ -330,19 +352,40 @@ function initLevelToggle(root = document) {
 			nameEl.value.trim().toUpperCase() === "DMDS"
 		) {
 			levelGroup.style.display = "";
+			if (unitConversionGroup) {
+				unitConversionGroup.style.display =
+					currentMode === "multiplied" ? "none" : "";
+			}
 			if (levelConversionGroup) {
-				levelConversionGroup.style.display = "";
+				levelConversionGroup.style.display =
+					currentMode === "multiplied" ? "none" : "";
 			}
 			if (levelModeGroup) {
 				levelModeGroup.style.display = "";
 			}
+			if (customConversionGroup) {
+				customConversionGroup.style.display =
+					currentMode === "multiplied" ? "" : "none";
+			}
+			if (customConversionInput) {
+				customConversionInput.required = currentMode === "multiplied";
+			}
 		} else {
 			levelGroup.style.display = "none";
+			if (unitConversionGroup) {
+				unitConversionGroup.style.display = "";
+			}
 			if (levelConversionGroup) {
 				levelConversionGroup.style.display = "none";
 			}
 			if (levelModeGroup) {
 				levelModeGroup.style.display = "none";
+			}
+			if (customConversionGroup) {
+				customConversionGroup.style.display = "none";
+			}
+			if (customConversionInput) {
+				customConversionInput.required = false;
 			}
 			if (levelModeSelect) {
 				levelModeSelect.value = "combined";
@@ -354,6 +397,9 @@ function initLevelToggle(root = document) {
 	}
 	if (nameEl) {
 		nameEl.addEventListener("input", toggle);
+	}
+	if (levelModeSelect) {
+		levelModeSelect.addEventListener("change", toggle);
 	}
 	// run once on init
 	toggle();

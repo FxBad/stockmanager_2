@@ -470,12 +470,14 @@ try {
                 const addUnitConv = document.getElementById('add_unit_conversion');
                 const addLevelConv = document.getElementById('add_level_conversion');
                 const addCalcMode = document.getElementById('add_calculation_mode');
+                const addCustomConv = document.getElementById('add_custom_conversion_factor');
                 const addDaily = document.getElementById('add_daily_consumption');
                 const addMinDays = document.getElementById('add_min_days_coverage');
                 if (addFieldStock) addFieldStock.value = 0;
                 if (addUnitConv) addUnitConv.value = '1.0';
                 if (addLevelConv) addLevelConv.value = '1.0';
                 if (addCalcMode) addCalcMode.value = 'combined';
+                if (addCustomConv) addCustomConv.value = '1.0';
                 if (addDaily) addDaily.value = '0.0';
                 if (addMinDays) addMinDays.value = 7;
             }
@@ -501,6 +503,10 @@ try {
             const editCalcMode = document.getElementById('edit_calculation_mode');
             if (editCalcMode) {
                 editCalcMode.value = button.dataset.calculationMode || 'combined';
+            }
+            const editCustomConversion = document.getElementById('edit_custom_conversion_factor');
+            if (editCustomConversion) {
+                editCustomConversion.value = button.dataset.levelConversion || button.dataset.unitConversion || '1.0';
             }
             document.getElementById('edit_daily_consumption').value = button.dataset.dailyConsumption || '0.0';
             document.getElementById('edit_min_days_coverage').value = button.dataset.minDaysCoverage || 1;
@@ -535,22 +541,35 @@ try {
         function updateLevelGroup(checkboxId, groupId) {
             const checkbox = document.getElementById(checkboxId);
             const group = document.getElementById(groupId);
+            const unitConversionGroup = document.getElementById(groupId.replace('level-group', 'unit-group-conversion'));
             const conversionGroup = document.getElementById(groupId + '-conversion');
             const modeGroup = document.getElementById(groupId + '-mode');
+            const customConversionGroup = document.getElementById(groupId + '-custom-conversion');
             const modeSelectId = checkboxId.replace('has_level', 'calculation_mode');
             const modeSelect = document.getElementById(modeSelectId);
+            const customConversionInput = document.getElementById(modeSelectId.replace('calculation_mode', 'custom_conversion_factor'));
             if (!group) return;
             if (!checkbox) {
                 group.style.display = 'none';
+                if (unitConversionGroup) unitConversionGroup.style.display = 'block';
                 if (conversionGroup) conversionGroup.style.display = 'none';
                 if (modeGroup) modeGroup.style.display = 'none';
+                if (customConversionGroup) customConversionGroup.style.display = 'none';
+                if (customConversionInput) customConversionInput.required = false;
                 if (modeSelect) modeSelect.value = 'combined';
                 return;
             }
-            group.style.display = checkbox.checked ? 'block' : 'none';
-            if (conversionGroup) conversionGroup.style.display = checkbox.checked ? 'block' : 'none';
-            if (modeGroup) modeGroup.style.display = checkbox.checked ? 'block' : 'none';
-            if (!checkbox.checked && modeSelect) modeSelect.value = 'combined';
+            const levelEnabled = checkbox.checked;
+            if (!levelEnabled && modeSelect) modeSelect.value = 'combined';
+            const calcMode = modeSelect ? String(modeSelect.value || 'combined').toLowerCase() : 'combined';
+            const useMultiplied = levelEnabled && calcMode === 'multiplied';
+
+            group.style.display = levelEnabled ? 'block' : 'none';
+            if (unitConversionGroup) unitConversionGroup.style.display = useMultiplied ? 'none' : 'block';
+            if (conversionGroup) conversionGroup.style.display = levelEnabled && !useMultiplied ? 'block' : 'none';
+            if (modeGroup) modeGroup.style.display = levelEnabled ? 'block' : 'none';
+            if (customConversionGroup) customConversionGroup.style.display = useMultiplied ? 'block' : 'none';
+            if (customConversionInput) customConversionInput.required = useMultiplied;
         }
 
         const addHasLevel = document.getElementById('add_has_level');
@@ -563,6 +582,20 @@ try {
         const editHasLevel = document.getElementById('edit_has_level');
         if (editHasLevel) {
             editHasLevel.addEventListener('change', function() {
+                updateLevelGroup('edit_has_level', 'edit-level-group');
+            });
+        }
+
+        const addCalcMode = document.getElementById('add_calculation_mode');
+        if (addCalcMode) {
+            addCalcMode.addEventListener('change', function() {
+                updateLevelGroup('add_has_level', 'add-level-group');
+            });
+        }
+
+        const editCalcMode = document.getElementById('edit_calculation_mode');
+        if (editCalcMode) {
+            editCalcMode.addEventListener('change', function() {
                 updateLevelGroup('edit_has_level', 'edit-level-group');
             });
         }

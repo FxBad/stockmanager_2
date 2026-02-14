@@ -137,23 +137,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.addEventListener('DOMContentLoaded', function() {
             const hasLevelCb = document.getElementById('has_level');
             const levelGroup = document.getElementById('level-group');
+            const unitConversionGroup = document.getElementById('unit-group-conversion');
             const levelConversionGroup = document.getElementById('level-group-conversion');
             const levelModeGroup = document.getElementById('level-group-mode');
             const calculationMode = document.getElementById('calculation_mode');
+            const customConversionGroup = document.getElementById('level-group-custom-conversion');
+            const customConversionInput = document.getElementById('custom_conversion_factor');
+
+            function updateLevelUI() {
+                if (!hasLevelCb || !levelGroup) {
+                    return;
+                }
+
+                if (!hasLevelCb.checked && calculationMode) {
+                    calculationMode.value = 'combined';
+                }
+
+                const calcMode = calculationMode ? String(calculationMode.value || 'combined').toLowerCase() : 'combined';
+                const useMultiplied = hasLevelCb.checked && calcMode === 'multiplied';
+
+                levelGroup.style.display = hasLevelCb.checked ? 'block' : 'none';
+                if (unitConversionGroup) unitConversionGroup.style.display = useMultiplied ? 'none' : 'block';
+                if (levelConversionGroup) levelConversionGroup.style.display = hasLevelCb.checked && !useMultiplied ? 'block' : 'none';
+                if (levelModeGroup) levelModeGroup.style.display = hasLevelCb.checked ? 'block' : 'none';
+                if (customConversionGroup) customConversionGroup.style.display = useMultiplied ? 'block' : 'none';
+                if (customConversionInput) customConversionInput.required = useMultiplied;
+            }
+
             if (hasLevelCb && levelGroup) {
                 hasLevelCb.addEventListener('change', function() {
-                    if (this.checked) {
-                        levelGroup.style.display = 'block';
-                        if (levelConversionGroup) levelConversionGroup.style.display = 'block';
-                        if (levelModeGroup) levelModeGroup.style.display = 'block';
-                    } else {
-                        levelGroup.style.display = 'none';
-                        if (levelConversionGroup) levelConversionGroup.style.display = 'none';
-                        if (levelModeGroup) levelModeGroup.style.display = 'none';
-                        if (calculationMode) calculationMode.value = 'combined';
-                    }
+                    updateLevelUI();
                 });
             }
+
+            if (calculationMode) {
+                calculationMode.addEventListener('change', function() {
+                    updateLevelUI();
+                });
+            }
+
+            updateLevelUI();
         });
     </script>
 

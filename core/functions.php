@@ -281,8 +281,15 @@ function normalizeItemInput(array $input, array $schema)
     $levelConversion = isset($input['level_conversion']) && is_numeric($input['level_conversion'])
         ? round((float)$input['level_conversion'], 1)
         : $qtyConversion;
+    $customConversionFactor = isset($input['custom_conversion_factor']) && is_numeric($input['custom_conversion_factor'])
+        ? round((float)$input['custom_conversion_factor'], 1)
+        : null;
     $calculationModeRaw = isset($input['calculation_mode']) ? strtolower(trim((string)$input['calculation_mode'])) : 'combined';
     $calculationMode = in_array($calculationModeRaw, ['combined', 'multiplied'], true) ? $calculationModeRaw : 'combined';
+
+    if ($calculationMode === 'multiplied' && $customConversionFactor !== null) {
+        $levelConversion = $customConversionFactor;
+    }
 
     return [
         'name' => isset($input['name']) ? trim((string)$input['name']) : '',
@@ -291,6 +298,7 @@ function normalizeItemInput(array $input, array $schema)
         'unit' => isset($input['unit']) ? trim((string)$input['unit']) : '',
         'unit_conversion' => $qtyConversion,
         'level_conversion' => $levelConversion,
+        'custom_conversion_factor' => $customConversionFactor,
         'calculation_mode' => $calculationMode,
         'daily_consumption' => isset($input['daily_consumption']) && is_numeric($input['daily_consumption']) ? round((float)$input['daily_consumption'], 1) : 0.0,
         'min_days_coverage' => isset($input['min_days_coverage']) && is_numeric($input['min_days_coverage']) ? (int)$input['min_days_coverage'] : 1,
@@ -327,6 +335,11 @@ function validateItemInput(array $normalized, array $schema)
     }
     if (!in_array($normalized['calculation_mode'], ['combined', 'multiplied'], true)) {
         $errors[] = 'Mode perhitungan tidak valid.';
+    }
+    if ($normalized['calculation_mode'] === 'multiplied') {
+        if (!isset($normalized['custom_conversion_factor']) || $normalized['custom_conversion_factor'] === null || (float)$normalized['custom_conversion_factor'] <= 0) {
+            $errors[] = 'Faktor konversi kustom wajib diisi dan harus lebih dari 0 untuk mode multiplied.';
+        }
     }
     if ($normalized['daily_consumption'] < 0) {
         $errors[] = 'Konsumsi harian tidak boleh negatif.';

@@ -13,6 +13,9 @@ $unitValue = isset($formState['unit']) ? (string)$formState['unit'] : '';
 $unitConversionValue = isset($formState['unit_conversion']) ? (float)$formState['unit_conversion'] : 1.0;
 $levelConversionValue = isset($formState['level_conversion']) ? (float)$formState['level_conversion'] : $unitConversionValue;
 $calculationModeValue = isset($formState['calculation_mode']) ? (string)$formState['calculation_mode'] : 'combined';
+$customConversionValue = isset($formState['custom_conversion_factor']) && is_numeric($formState['custom_conversion_factor'])
+    ? (float)$formState['custom_conversion_factor']
+    : $levelConversionValue;
 $dailyConsumptionValue = isset($formState['daily_consumption']) ? (float)$formState['daily_consumption'] : 0.0;
 $minDaysCoverageValue = isset($formState['min_days_coverage']) ? (int)$formState['min_days_coverage'] : 7;
 $descriptionValue = isset($formState['description']) ? (string)$formState['description'] : '';
@@ -85,7 +88,7 @@ foreach ($formUnits as $unitOption) {
     </select>
 </div>
 
-<div class="form-group">
+<div class="form-group" id="<?php echo htmlspecialchars($formPrefix . 'unit-group-conversion'); ?>">
     <label for="<?php echo htmlspecialchars($formPrefix . 'unit_conversion'); ?>">Faktor Konversi Satuan</label>
     <input type="number" id="<?php echo htmlspecialchars($formPrefix . 'unit_conversion'); ?>" name="unit_conversion" min="0.1" step="0.1" value="<?php echo number_format($unitConversionValue, 1, '.', ''); ?>" required>
 </div>
@@ -129,5 +132,10 @@ foreach ($formUnits as $unitOption) {
             <option value="combined" <?php echo $calculationModeValue === 'combined' ? 'selected' : ''; ?>>Combined (level×konversi + stok×konversi)</option>
             <option value="multiplied" <?php echo $calculationModeValue === 'multiplied' ? 'selected' : ''; ?>>Multiplied (konversi×level×stok)</option>
         </select>
+    </div>
+
+    <div class="form-group" id="<?php echo htmlspecialchars($formLevelGroupId . '-custom-conversion'); ?>" style="<?php echo ($hasLevelValue === 1 && $calculationModeValue === 'multiplied') ? '' : 'display:none;'; ?>">
+        <label for="<?php echo htmlspecialchars($formPrefix . 'custom_conversion_factor'); ?>">Faktor Konversi Kustom (Multiplied)</label>
+        <input type="number" id="<?php echo htmlspecialchars($formPrefix . 'custom_conversion_factor'); ?>" name="custom_conversion_factor" min="0.1" step="0.1" value="<?php echo number_format($customConversionValue, 1, '.', ''); ?>" <?php echo ($hasLevelValue === 1 && $calculationModeValue === 'multiplied') ? 'required' : ''; ?>>
     </div>
 <?php endif; ?>
