@@ -115,6 +115,7 @@ if ($showSensitive) {
     $colCount += 1; // Daily Consumption
 }
 $colCount += 4; // Level, Coverage, Status, Last Updated
+$colCount += 1; // Quick actions
 $colspan = $colCount;
 ?>
 
@@ -269,6 +270,7 @@ $colspan = $colCount;
                                 <?php endif; ?>
                             </a>
                         </th>
+                        <th class="col-text">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -358,6 +360,51 @@ $colspan = $colCount;
                                             Tidak Pernah
                                         </span>
                                     <?php endif; ?>
+                                </td>
+                                <td data-label="Aksi" class="col-text">
+                                    <div class="row-actions-inline">
+                                        <button type="button" class="row-action-btn row-action-preview js-preview-toggle" data-preview-target="preview-row-<?php echo (int)$item['id']; ?>" aria-expanded="false">
+                                            <i class='bx bx-chevron-down'></i>
+                                            <span>Lihat Detail</span>
+                                        </button>
+                                        <a class="row-action-btn row-action-edit" href="edit-item.php?id=<?php echo (int)$item['id']; ?>">
+                                            <i class='bx bx-edit'></i>
+                                            <span>Edit</span>
+                                        </a>
+                                        <button type="button" class="row-action-btn row-action-history js-preview-history" data-preview-target="preview-row-<?php echo (int)$item['id']; ?>">
+                                            <i class='bx bx-history'></i>
+                                            <span>Riwayat</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr id="preview-row-<?php echo (int)$item['id']; ?>" class="item-preview-row" hidden>
+                                <td colspan="<?php echo $colspan; ?>" class="item-preview-cell">
+                                    <div class="item-preview-grid">
+                                        <section class="item-preview-block">
+                                            <h4><i class='bx bx-trending-up'></i> Tren Pemakaian</h4>
+                                            <p>Pemakaian harian: <strong><?php echo number_format((float)$resolvedDaily['value'], 2); ?></strong><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (estimasi)' : ''); ?></p>
+                                            <p>Ketahanan saat ini: <strong><?php echo number_format($daysCoverage, 1); ?> hari</strong></p>
+                                            <p>Stok efektif: <strong><?php echo number_format((float)$totalStock, 1); ?></strong></p>
+                                        </section>
+                                        <section class="item-preview-block preview-history-block">
+                                            <h4><i class='bx bx-time-five'></i> Update Terakhir</h4>
+                                            <p>
+                                                <?php if (!empty($item['last_updated'])): ?>
+                                                    <?php echo date('d/m/Y, H:i', strtotime((string)$item['last_updated'])) . ' WIB'; ?>
+                                                <?php else: ?>
+                                                    Belum pernah diperbarui
+                                                <?php endif; ?>
+                                            </p>
+                                            <p>Status saat ini: <strong><?php echo translateStatus($itemStatus, 'id'); ?></strong></p>
+                                        </section>
+                                        <section class="item-preview-block">
+                                            <h4><i class='bx bx-id-card'></i> Metadata</h4>
+                                            <p>Item ID: <strong>#<?php echo (int)$item['id']; ?></strong></p>
+                                            <p>Dibuat oleh: <strong><?php echo htmlspecialchars((string)($item['added_by_name'] ?? '-')); ?></strong></p>
+                                            <p>Diperbarui oleh: <strong><?php echo htmlspecialchars((string)($item['updated_by_name'] ?? '-')); ?></strong></p>
+                                        </section>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

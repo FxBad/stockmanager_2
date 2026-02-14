@@ -696,6 +696,86 @@ nav.open ~ .main-container {
 	border-color: #f4a5a5;
 }
 
+.view-page .row-actions-inline {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	justify-content: flex-start;
+}
+
+.view-page .row-action-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	border-radius: 8px;
+	border: 1px solid rgba(52, 78, 65, 0.2);
+	background: #fff;
+	color: var(--brunswick-green);
+	font-size: 12px;
+	font-weight: 600;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.view-page .row-action-btn:hover {
+	background: rgba(52, 78, 65, 0.06);
+}
+
+.view-page .row-action-btn i {
+	font-size: 15px;
+}
+
+.view-page .row-action-preview[aria-expanded="true"] {
+	background: var(--hunter-green);
+	color: #fff;
+	border-color: var(--hunter-green);
+}
+
+.view-page .item-preview-row {
+	background: #f9fbf9;
+}
+
+.view-page .item-preview-cell {
+	padding: 0;
+	border-bottom: 1px solid #dbe4dc;
+}
+
+.view-page .item-preview-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 10px;
+	padding: 12px;
+}
+
+.view-page .item-preview-block {
+	background: #fff;
+	border: 1px solid rgba(52, 78, 65, 0.12);
+	border-radius: 10px;
+	padding: 10px 12px;
+}
+
+.view-page .item-preview-block h4 {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--brunswick-green);
+	margin-bottom: 8px;
+}
+
+.view-page .item-preview-block p {
+	font-size: 13px;
+	color: #45564c;
+	margin-bottom: 4px;
+	line-height: 1.4;
+}
+
+.view-page .item-preview-block p:last-child {
+	margin-bottom: 0;
+}
+
 /* Mobile optimization for table container */
 @media screen and (max-width: 420px) {
 	.table-container {
@@ -721,6 +801,19 @@ nav.open ~ .main-container {
 
 	.view-page .table-container thead th {
 		top: 170px;
+	}
+
+	.view-page .item-preview-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.view-page .row-actions-inline {
+		justify-content: stretch;
+	}
+
+	.view-page .row-action-btn {
+		width: 100%;
+		justify-content: center;
 	}
 }
 
@@ -3710,6 +3803,16 @@ table th i {
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
+	}
+
+	.view-page .item-preview-row td {
+		padding: 12px !important;
+		text-align: left;
+		display: block;
+	}
+
+	.view-page .item-preview-row td::before {
+		content: none;
 	}
 
 	td:last-child {

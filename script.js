@@ -16,6 +16,90 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 });
 
+document.addEventListener("DOMContentLoaded", function () {
+	const viewTable = document.querySelector(".view-page .table-container table");
+	if (!viewTable) return;
+
+	function closeAllQuickPreviews(exceptId) {
+		const openRows = viewTable.querySelectorAll(".item-preview-row");
+		openRows.forEach((row) => {
+			if (exceptId && row.id === exceptId) return;
+			row.hidden = true;
+		});
+
+		const toggleButtons = viewTable.querySelectorAll(".js-preview-toggle");
+		toggleButtons.forEach((btn) => {
+			const targetId = btn.dataset.previewTarget || "";
+			if (exceptId && targetId === exceptId) return;
+			btn.setAttribute("aria-expanded", "false");
+			const label = btn.querySelector("span");
+			if (label) label.textContent = "Lihat Detail";
+			const icon = btn.querySelector("i");
+			if (icon) {
+				icon.classList.remove("bx-chevron-up");
+				icon.classList.add("bx-chevron-down");
+			}
+		});
+	}
+
+	function openPreviewById(previewId, options = {}) {
+		if (!previewId) return;
+		const previewRow = document.getElementById(previewId);
+		if (!previewRow) return;
+
+		closeAllQuickPreviews(previewId);
+		previewRow.hidden = false;
+
+		const toggleButton = viewTable.querySelector(
+			`.js-preview-toggle[data-preview-target="${previewId}"]`,
+		);
+		if (toggleButton) {
+			toggleButton.setAttribute("aria-expanded", "true");
+			const label = toggleButton.querySelector("span");
+			if (label) label.textContent = "Sembunyikan";
+			const icon = toggleButton.querySelector("i");
+			if (icon) {
+				icon.classList.remove("bx-chevron-down");
+				icon.classList.add("bx-chevron-up");
+			}
+		}
+
+		if (options.focusHistory) {
+			const historyBlock = previewRow.querySelector(".preview-history-block");
+			if (historyBlock) {
+				historyBlock.scrollIntoView({
+					behavior: "smooth",
+					block: "nearest",
+				});
+			}
+		}
+	}
+
+	document.addEventListener("click", function (event) {
+		const toggleButton = event.target.closest(".js-preview-toggle");
+		if (toggleButton && viewTable.contains(toggleButton)) {
+			const previewId = toggleButton.dataset.previewTarget || "";
+			const previewRow = previewId
+				? document.getElementById(previewId)
+				: null;
+			if (!previewRow) return;
+
+			if (previewRow.hidden) {
+				openPreviewById(previewId, { focusHistory: false });
+			} else {
+				closeAllQuickPreviews();
+			}
+			return;
+		}
+
+		const historyButton = event.target.closest(".js-preview-history");
+		if (historyButton && viewTable.contains(historyButton)) {
+			const previewId = historyButton.dataset.previewTarget || "";
+			openPreviewById(previewId, { focusHistory: true });
+		}
+	});
+});
+
 // Category filter for update-stock page (top-level, not nested)
 document.addEventListener("DOMContentLoaded", function () {
 	const filter = document.getElementById("category-filter");
