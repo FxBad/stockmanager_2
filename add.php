@@ -1,2 +1,2 @@
 <?php
-require_once __DIR__ . '/pages/add.php';
+require_once __DIR__ . '/pages/adda.php';
