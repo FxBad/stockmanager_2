@@ -190,7 +190,7 @@ try {
                     $statusIconClass = 'bx-x-circle';
                 }
             ?>
-                <tr>
+                <tr class="item-data-row" data-item-id="<?php echo $id; ?>">
                     <td data-label="Nama Barang" class="col-text"><?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></td>
                     <td data-label="Kategori" class="col-text"><?php echo htmlspecialchars($itemCategory, ENT_QUOTES, 'UTF-8'); ?></td>
                     <td data-label="Stok" class="col-number"><?php echo number_format((int)$fieldStock); ?></td>
@@ -200,7 +200,7 @@ try {
                     <td data-label="Level (cm)" class="col-number"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
                     <td data-label="Ketahanan di lapangan" class="col-number"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
                     <td data-label="Status" class="col-text">
-                        <span class="status <?php echo htmlspecialchars($itemStatus, ENT_QUOTES, 'UTF-8'); ?>">
+                        <span class="status <?php echo htmlspecialchars($itemStatus, ENT_QUOTES, 'UTF-8'); ?>" role="status" aria-label="Status <?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?>">
                             <i class='bx <?php echo htmlspecialchars($statusIconClass, ENT_QUOTES, 'UTF-8'); ?>' aria-hidden="true"></i>
                             <span><?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?></span>
                         </span>
@@ -220,22 +220,22 @@ try {
                     </td>
                     <td data-label="Aksi" class="col-text">
                         <div class="row-actions-inline">
-                            <button type="button" class="row-action-btn row-action-preview js-preview-toggle" data-preview-target="preview-row-<?php echo $id; ?>" aria-expanded="false">
+                            <button type="button" class="row-action-btn row-action-preview js-preview-toggle" data-preview-target="preview-row-<?php echo $id; ?>" aria-expanded="false" aria-controls="preview-row-<?php echo $id; ?>" aria-label="Lihat detail item <?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>">
                                 <i class='bx bx-chevron-down'></i>
                                 <span>Lihat Detail</span>
                             </button>
-                            <a class="row-action-btn row-action-edit" href="edit-item.php?id=<?php echo $id; ?>">
+                            <a class="row-action-btn row-action-edit" href="edit-item.php?id=<?php echo $id; ?>" aria-label="Edit item <?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>">
                                 <i class='bx bx-edit'></i>
                                 <span>Edit</span>
                             </a>
-                            <button type="button" class="row-action-btn row-action-history js-preview-history" data-preview-target="preview-row-<?php echo $id; ?>">
+                            <button type="button" class="row-action-btn row-action-history js-preview-history" data-preview-target="preview-row-<?php echo $id; ?>" aria-controls="preview-row-<?php echo $id; ?>" aria-label="Lihat riwayat item <?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>">
                                 <i class='bx bx-history'></i>
                                 <span>Riwayat</span>
                             </button>
                         </div>
                     </td>
                 </tr>
-                <tr id="preview-row-<?php echo $id; ?>" class="item-preview-row" hidden>
+                <tr id="preview-row-<?php echo $id; ?>" class="item-preview-row" hidden aria-live="polite">
                     <td colspan="<?php echo $colspan; ?>" class="item-preview-cell">
                         <div class="item-preview-grid">
                             <section class="item-preview-block">

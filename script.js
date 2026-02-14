@@ -22,6 +22,13 @@ document.addEventListener("DOMContentLoaded", function () {
 	);
 	if (!viewTable) return;
 
+	function getRowActionButtons(row) {
+		if (!row) return [];
+		return Array.from(
+			row.querySelectorAll(".row-actions-inline .row-action-btn"),
+		);
+	}
+
 	function closeAllQuickPreviews(exceptId) {
 		const openRows = viewTable.querySelectorAll(".item-preview-row");
 		openRows.forEach((row) => {
@@ -34,6 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			const targetId = btn.dataset.previewTarget || "";
 			if (exceptId && targetId === exceptId) return;
 			btn.setAttribute("aria-expanded", "false");
+			btn.dataset.expanded = "0";
 			const label = btn.querySelector("span");
 			if (label) label.textContent = "Lihat Detail";
 			const icon = btn.querySelector("i");
@@ -57,6 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		);
 		if (toggleButton) {
 			toggleButton.setAttribute("aria-expanded", "true");
+			toggleButton.dataset.expanded = "1";
 			const label = toggleButton.querySelector("span");
 			if (label) label.textContent = "Sembunyikan";
 			const icon = toggleButton.querySelector("i");
@@ -79,20 +88,23 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 	}
 
+	function openOrTogglePreview(toggleButton) {
+		if (!toggleButton) return;
+		const previewId = toggleButton.dataset.previewTarget || "";
+		const previewRow = previewId ? document.getElementById(previewId) : null;
+		if (!previewRow) return;
+
+		if (previewRow.hidden) {
+			openPreviewById(previewId, { focusHistory: false });
+		} else {
+			closeAllQuickPreviews();
+		}
+	}
+
 	document.addEventListener("click", function (event) {
 		const toggleButton = event.target.closest(".js-preview-toggle");
 		if (toggleButton && viewTable.contains(toggleButton)) {
-			const previewId = toggleButton.dataset.previewTarget || "";
-			const previewRow = previewId
-				? document.getElementById(previewId)
-				: null;
-			if (!previewRow) return;
-
-			if (previewRow.hidden) {
-				openPreviewById(previewId, { focusHistory: false });
-			} else {
-				closeAllQuickPreviews();
-			}
+			openOrTogglePreview(toggleButton);
 			return;
 		}
 
@@ -100,6 +112,69 @@ document.addEventListener("DOMContentLoaded", function () {
 		if (historyButton && viewTable.contains(historyButton)) {
 			const previewId = historyButton.dataset.previewTarget || "";
 			openPreviewById(previewId, { focusHistory: true });
+		}
+	});
+
+	document.addEventListener("keydown", function (event) {
+		if (!document.body.classList.contains("view-page")) return;
+
+		if (event.key === "Escape") {
+			closeAllQuickPreviews();
+			return;
+		}
+
+		const focusedEl = document.activeElement;
+		if (!(focusedEl instanceof HTMLElement)) return;
+
+		if (
+			event.key === "Enter" &&
+			focusedEl.classList.contains("js-preview-toggle")
+		) {
+			event.preventDefault();
+			openOrTogglePreview(focusedEl);
+			return;
+		}
+
+		if (!focusedEl.classList.contains("row-action-btn")) return;
+
+		const currentRow = focusedEl.closest("tr.item-data-row");
+		if (!currentRow) return;
+
+		const currentButtons = getRowActionButtons(currentRow);
+		const currentIndex = currentButtons.indexOf(focusedEl);
+		if (currentIndex < 0) return;
+
+		if (event.key === "ArrowRight") {
+			event.preventDefault();
+			const nextBtn = currentButtons[currentIndex + 1] || currentButtons[0];
+			if (nextBtn) nextBtn.focus();
+			return;
+		}
+
+		if (event.key === "ArrowLeft") {
+			event.preventDefault();
+			const prevBtn =
+				currentButtons[currentIndex - 1] ||
+				currentButtons[currentButtons.length - 1];
+			if (prevBtn) prevBtn.focus();
+			return;
+		}
+
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			const rows = Array.from(
+				viewTable.querySelectorAll("tbody tr.item-data-row"),
+			);
+			const rowIndex = rows.indexOf(currentRow);
+			if (rowIndex < 0) return;
+			const targetIndex =
+				event.key === "ArrowDown"
+					? Math.min(rows.length - 1, rowIndex + 1)
+					: Math.max(0, rowIndex - 1);
+			const targetButtons = getRowActionButtons(rows[targetIndex]);
+			const targetBtn =
+				targetButtons[currentIndex] || targetButtons[targetButtons.length - 1];
+			if (targetBtn) targetBtn.focus();
 		}
 	});
 });
@@ -1019,10 +1094,14 @@ document.addEventListener("DOMContentLoaded", function () {
 	function displaySuggestions(items, query) {
 		autocompleteList.innerHTML = "";
 		currentFocus = -1;
+		searchInput.setAttribute("aria-expanded", "true");
 
 		items.forEach((item, index) => {
 			const div = document.createElement("div");
 			div.className = "autocomplete-item";
+			div.id = `autocomplete-item-${index}`;
+			div.setAttribute("role", "option");
+			div.setAttribute("aria-selected", "false");
 			div.innerHTML = highlightMatch(item, query);
 			div.dataset.value = item;
 			div.dataset.index = index;
@@ -1042,6 +1121,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		autocompleteList.innerHTML =
 			'<div class="autocomplete-loading">Mencari</div>';
 		autocompleteList.classList.add("show");
+		searchInput.setAttribute("aria-expanded", "true");
 	}
 
 	// Show no results message
@@ -1049,6 +1129,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		autocompleteList.innerHTML =
 			'<div class="autocomplete-no-results">Tidak ada hasil ditemukan</div>';
 		autocompleteList.classList.add("show");
+		searchInput.setAttribute("aria-expanded", "true");
 	}
 
 	// Hide autocomplete dropdown
@@ -1056,6 +1137,8 @@ document.addEventListener("DOMContentLoaded", function () {
 		autocompleteList.innerHTML = "";
 		autocompleteList.classList.remove("show");
 		currentFocus = -1;
+		searchInput.setAttribute("aria-expanded", "false");
+		searchInput.removeAttribute("aria-activedescendant");
 	}
 
 	function toggleClearButton() {
@@ -1268,6 +1351,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			button.type = "button";
 			button.className = "summary-filter-chip summary-filter-chip-action";
 			button.dataset.filterKey = chip.key;
+			button.setAttribute("aria-label", `Hapus filter ${chip.label}`);
 			button.innerHTML = `<span>${chip.label}</span><i class='bx bx-x' aria-hidden="true"></i>`;
 			chipsContainer.appendChild(button);
 		});
@@ -1359,11 +1443,22 @@ document.addEventListener("DOMContentLoaded", function () {
 		if (currentFocus >= items.length) currentFocus = 0;
 		if (currentFocus < 0) currentFocus = items.length - 1;
 		items[currentFocus].classList.add("active");
+		items[currentFocus].setAttribute("aria-selected", "true");
+		if (items[currentFocus].id) {
+			searchInput.setAttribute(
+				"aria-activedescendant",
+				items[currentFocus].id,
+			);
+		}
 	}
 
 	// Remove active class from all items
 	function removeActive(items) {
-		items.forEach((item) => item.classList.remove("active"));
+		items.forEach((item) => {
+			item.classList.remove("active");
+			item.setAttribute("aria-selected", "false");
+		});
+		searchInput.removeAttribute("aria-activedescendant");
 	}
 
 	// Handle keyboard navigation
@@ -1469,6 +1564,37 @@ document.addEventListener("DOMContentLoaded", function () {
 		});
 	}
 
+	if (filterForm) {
+		filterForm.addEventListener("keydown", function (event) {
+			const isArrowKey =
+				event.key === "ArrowRight" ||
+				event.key === "ArrowLeft" ||
+				event.key === "ArrowDown" ||
+				event.key === "ArrowUp";
+			if (!isArrowKey) return;
+
+			const controls = Array.from(
+				filterForm.querySelectorAll(
+					"input, select, button, a, [tabindex]:not([tabindex='-1'])",
+				),
+			).filter((el) => !el.disabled && el.offsetParent !== null);
+
+			const currentIndex = controls.indexOf(document.activeElement);
+			if (currentIndex < 0) return;
+
+			event.preventDefault();
+			const delta =
+				event.key === "ArrowRight" || event.key === "ArrowDown"
+					? 1
+					: -1;
+			const nextIndex = Math.max(
+				0,
+				Math.min(controls.length - 1, currentIndex + delta),
+			);
+			controls[nextIndex].focus();
+		});
+	}
+
 	if (chipsContainer) {
 		chipsContainer.addEventListener("click", function (event) {
 			const removeButton = event.target.closest("[data-filter-key]");
@@ -1499,6 +1625,14 @@ document.addEventListener("DOMContentLoaded", function () {
 				isExpanded ? "false" : "true",
 			);
 			advancedPanel.hidden = isExpanded;
+		});
+
+		document.addEventListener("keydown", function (event) {
+			if (event.key !== "Escape") return;
+			if (advancedPanel.hidden) return;
+			advancedPanel.hidden = true;
+			advancedToggleButton.setAttribute("aria-expanded", "false");
+			advancedToggleButton.focus();
 		});
 	}
 

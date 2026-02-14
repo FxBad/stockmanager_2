@@ -156,7 +156,7 @@ $colspan = $colCount;
                 <article class="summary-card summary-card-filters">
                     <p class="summary-label" id="summary-filter-count-label">Filter Aktif (<?php echo $activeFilterCount; ?>)</p>
                     <div class="summary-filter-actions">
-                        <div id="active-filter-chips" class="summary-filter-chips" aria-label="Filter aktif saat ini">
+                        <div id="active-filter-chips" class="summary-filter-chips" aria-label="Filter aktif saat ini" aria-live="polite" aria-atomic="true">
                             <?php if ($activeFilterCount > 0): ?>
                                 <?php foreach ($activeFilters as $activeFilter): ?>
                                     <span class="summary-filter-chip"><?php echo htmlspecialchars($activeFilter); ?></span>
@@ -174,14 +174,16 @@ $colspan = $colCount;
             <div class="table-header">
                 <form method="GET" class="table-filters" data-filter-context="view" data-default-sort="name" data-default-dir="asc">
                     <div class="filter-primary-row">
+                        <label class="sr-only" for="search-input">Cari Barang</label>
                         <div class="search-box">
                             <i class='bx bx-search'></i>
-                            <input type="text" name="search" id="search-input" placeholder="Cari barang..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
+                            <input type="text" name="search" id="search-input" placeholder="Cari barang..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off" aria-autocomplete="list" aria-controls="autocomplete-list" aria-expanded="false" role="combobox">
                             <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Hapus pencarian">&times;</button>
-                            <div id="autocomplete-list" class="autocomplete-items"></div>
+                            <div id="autocomplete-list" class="autocomplete-items" role="listbox" aria-label="Saran nama barang"></div>
                         </div>
 
                         <div class="filter-group filter-group-primary">
+                            <label class="sr-only" for="filter-category">Filter Kategori</label>
                             <select name="category" id="filter-category">
                                 <option value="">Semua Kategori</option>
                                 <?php foreach ($categories as $cat): ?>
@@ -191,6 +193,7 @@ $colspan = $colCount;
                                 <?php endforeach; ?>
                             </select>
 
+                            <label class="sr-only" for="filter-status">Filter Status</label>
                             <select name="status" id="filter-status">
                                 <option value="">Semua Status</option>
                                 <option value="in-stock" <?php echo $status === 'in-stock' ? 'selected' : ''; ?>><?php echo translateStatus('in-stock', 'id'); ?></option>
@@ -230,7 +233,7 @@ $colspan = $colCount;
             </div>
 
             <!-- Data Table -->
-            <table>
+            <table id="view-table" class="view-cards-table" aria-label="Tabel data stok barang" aria-describedby="summary-filter-count-label">
                 <thead>
                     <tr>
                         <th>
@@ -333,7 +336,7 @@ $colspan = $colCount;
                                 $statusIconClass = 'bx-x-circle';
                             }
                         ?>
-                            <tr>
+                            <tr class="item-data-row" data-item-id="<?php echo (int)$item['id']; ?>">
                                 <td data-label="Nama Barang" class="col-text"><?php echo htmlspecialchars($name); ?></td>
                                 <td data-label="Kategori" class="col-text"><?php echo htmlspecialchars($itemCategory); ?></td>
                                 <td data-label="Stok" class="col-number"><?php echo number_format((int)$field_stock); ?></td>
@@ -343,7 +346,7 @@ $colspan = $colCount;
                                 <td data-label="Level (cm)" class="col-number"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
                                 <td data-label="Ketahanan di lapangan" class="col-number"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
                                 <td data-label="Status" class="col-text">
-                                    <span class="status <?php echo htmlspecialchars($itemStatus); ?>">
+                                    <span class="status <?php echo htmlspecialchars($itemStatus); ?>" role="status" aria-label="Status <?php echo htmlspecialchars(translateStatus($itemStatus, 'id')); ?>">
                                         <i class='bx <?php echo htmlspecialchars($statusIconClass); ?>' aria-hidden="true"></i>
                                         <span><?php echo translateStatus($itemStatus, 'id'); ?></span>
                                     </span>
@@ -363,22 +366,22 @@ $colspan = $colCount;
                                 </td>
                                 <td data-label="Aksi" class="col-text">
                                     <div class="row-actions-inline">
-                                        <button type="button" class="row-action-btn row-action-preview js-preview-toggle" data-preview-target="preview-row-<?php echo (int)$item['id']; ?>" aria-expanded="false">
+                                        <button type="button" class="row-action-btn row-action-preview js-preview-toggle" data-preview-target="preview-row-<?php echo (int)$item['id']; ?>" aria-expanded="false" aria-controls="preview-row-<?php echo (int)$item['id']; ?>" aria-label="Lihat detail item <?php echo htmlspecialchars($name); ?>">
                                             <i class='bx bx-chevron-down'></i>
                                             <span>Lihat Detail</span>
                                         </button>
-                                        <a class="row-action-btn row-action-edit" href="edit-item.php?id=<?php echo (int)$item['id']; ?>">
+                                        <a class="row-action-btn row-action-edit" href="edit-item.php?id=<?php echo (int)$item['id']; ?>" aria-label="Edit item <?php echo htmlspecialchars($name); ?>">
                                             <i class='bx bx-edit'></i>
                                             <span>Edit</span>
                                         </a>
-                                        <button type="button" class="row-action-btn row-action-history js-preview-history" data-preview-target="preview-row-<?php echo (int)$item['id']; ?>">
+                                        <button type="button" class="row-action-btn row-action-history js-preview-history" data-preview-target="preview-row-<?php echo (int)$item['id']; ?>" aria-controls="preview-row-<?php echo (int)$item['id']; ?>" aria-label="Lihat riwayat item <?php echo htmlspecialchars($name); ?>">
                                             <i class='bx bx-history'></i>
                                             <span>Riwayat</span>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-                            <tr id="preview-row-<?php echo (int)$item['id']; ?>" class="item-preview-row" hidden>
+                            <tr id="preview-row-<?php echo (int)$item['id']; ?>" class="item-preview-row" hidden aria-live="polite">
                                 <td colspan="<?php echo $colspan; ?>" class="item-preview-cell">
                                     <div class="item-preview-grid">
                                         <section class="item-preview-block">
