@@ -61,7 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Cache metadata checks
             $includeLevel = db_has_column('items', 'level');
+            $itemsHasWarehouseStock = db_has_column('items', 'warehouse_stock');
             $histHasLevel = db_has_column('item_stock_history', 'level');
+            $histHasWarehouseOld = db_has_column('item_stock_history', 'warehouse_stock_old');
+            $histHasWarehouseNew = db_has_column('item_stock_history', 'warehouse_stock_new');
 
             // Compute totals and coverage using existing helper
             $totalStockNew = ($fieldStock + $warehouseStock) * $unitConversion;
@@ -95,7 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'name',
                 'category',
                 'field_stock',
-                'warehouse_stock',
                 'unit',
                 'unit_conversion',
                 'daily_consumption',
@@ -109,7 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':name',
                 ':category',
                 ':field_stock',
-                ':warehouse_stock',
                 ':unit',
                 ':unit_conversion',
                 ':daily_consumption',
@@ -119,6 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 "'daily_consumption'",
                 ':status'
             ];
+
+            if ($itemsHasWarehouseStock) {
+                array_splice($columns, 3, 0, 'warehouse_stock');
+                array_splice($placeholders, 3, 0, ':warehouse_stock');
+            }
 
             if ($includeLevel) {
                 // insert level before calculation_type for readability
@@ -138,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':name' => $name,
                 ':category' => $category,
                 ':field_stock' => $fieldStock,
-                ':warehouse_stock' => $warehouseStock,
                 ':unit' => $unit,
                 ':unit_conversion' => $unitConversion,
                 ':daily_consumption' => $dailyConsumption,
@@ -147,6 +152,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':added_by' => $_SESSION['user_id'],
                 ':status' => $statusNew
             ];
+
+            if ($itemsHasWarehouseStock) {
+                $params[':warehouse_stock'] = $warehouseStock;
+            }
 
             if ($includeLevel) {
                 $params[':level'] = $levelVal;
@@ -160,17 +169,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newItemId = $pdo->lastInsertId();
 
             // Insert audit record for initial insert
-            $histSql = 'INSERT INTO item_stock_history
-            (item_id, item_name, category, action, field_stock_old, field_stock_new, warehouse_stock_old, warehouse_stock_new, status_old, status_new, total_stock_old, total_stock_new, days_coverage_old, days_coverage_new, unit, unit_conversion, daily_consumption, min_days_coverage, changed_by, note)
-            VALUES
-            (:item_id, :item_name, :category, :action, NULL, :field_stock_new, NULL, :warehouse_stock_new, NULL, :status_new, NULL, :total_stock_new, NULL, :days_coverage_new, :unit, :unit_conversion, :daily_consumption, :min_days_coverage, :changed_by, :note)';
-            // If `level` column exists in item_stock_history, include it
-            if ($histHasLevel) {
-                $histSql = 'INSERT INTO item_stock_history
-                (item_id, item_name, category, action, field_stock_old, field_stock_new, warehouse_stock_old, warehouse_stock_new, status_old, status_new, total_stock_old, total_stock_new, days_coverage_old, days_coverage_new, unit, unit_conversion, daily_consumption, level, min_days_coverage, changed_by, note)
-                VALUES
-                (:item_id, :item_name, :category, :action, NULL, :field_stock_new, NULL, :warehouse_stock_new, NULL, :status_new, NULL, :total_stock_new, NULL, :days_coverage_new, :unit, :unit_conversion, :daily_consumption, :level, :min_days_coverage, :changed_by, :note)';
+            $histColumns = [
+                'item_id',
+                'item_name',
+                'category',
+                'action',
+                'field_stock_old',
+                'field_stock_new',
+                'status_old',
+                'status_new',
+                'total_stock_old',
+                'total_stock_new',
+                'days_coverage_old',
+                'days_coverage_new',
+                'unit',
+                'unit_conversion',
+                'daily_consumption',
+                'min_days_coverage',
+                'changed_by',
+                'note'
+            ];
+            $histValues = [
+                ':item_id',
+                ':item_name',
+                ':category',
+                ':action',
+                'NULL',
+                ':field_stock_new',
+                'NULL',
+                ':status_new',
+                'NULL',
+                ':total_stock_new',
+                'NULL',
+                ':days_coverage_new',
+                ':unit',
+                ':unit_conversion',
+                ':daily_consumption',
+                ':min_days_coverage',
+                ':changed_by',
+                ':note'
+            ];
+
+            if ($histHasWarehouseOld) {
+                array_splice($histColumns, 6, 0, 'warehouse_stock_old');
+                array_splice($histValues, 6, 0, 'NULL');
             }
+            if ($histHasWarehouseNew) {
+                $insertPos = $histHasWarehouseOld ? 7 : 6;
+                array_splice($histColumns, $insertPos, 0, 'warehouse_stock_new');
+                array_splice($histValues, $insertPos, 0, ':warehouse_stock_new');
+            }
+            if ($histHasLevel) {
+                array_splice($histColumns, 15, 0, 'level');
+                array_splice($histValues, 15, 0, ':level');
+            }
+
+            $histSql = 'INSERT INTO item_stock_history\n            (' . implode(', ', $histColumns) . ')\n            VALUES\n            (' . implode(', ', $histValues) . ')';
 
             $histStmt = $pdo->prepare($histSql);
             $histParams = [
@@ -179,7 +233,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':category' => $category,
                 ':action' => 'insert',
                 ':field_stock_new' => $fieldStock,
-                ':warehouse_stock_new' => $warehouseStock,
                 ':status_new' => $statusNew,
                 ':total_stock_new' => $totalStockNew,
                 ':days_coverage_new' => $daysCoverageNew,
@@ -190,6 +243,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':changed_by' => isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null,
                 ':note' => 'initial insert (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')'
             ];
+
+            if ($histHasWarehouseNew) {
+                $histParams[':warehouse_stock_new'] = $warehouseStock;
+            }
 
             // Include level if column exists
             if ($histHasLevel) {
