@@ -131,58 +131,6 @@ try {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <style>
-        .unit-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.45);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            padding: 16px;
-        }
-
-        .unit-modal-overlay.show {
-            display: flex;
-        }
-
-        .unit-modal {
-            background: var(--white);
-            border-radius: 10px;
-            width: 100%;
-            max-width: 700px;
-            box-shadow: var(--box-shadow);
-            overflow: hidden;
-        }
-
-        .unit-modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--cultured);
-        }
-
-        .unit-modal-header h3 {
-            margin: 0;
-        }
-
-        .unit-modal-close {
-            border: none;
-            background: transparent;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--charcoal);
-        }
-
-        .unit-modal-body {
-            padding: 18px;
-        }
-    </style>
 </head>
 
 <body>
@@ -197,15 +145,33 @@ try {
             <?php echo $message; ?>
         <?php endif; ?>
 
+        <div class="table-container" style="margin-bottom: 20px;">
+            <div class="table-header">
+                <h3>Tambah Satuan</h3>
+            </div>
+            <form method="POST" class="add-form">
+                <input type="hidden" name="action" value="create_unit">
+                <div class="form-group">
+                    <label for="value">Value (unik)</label>
+                    <input type="text" id="value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" placeholder="contoh: drum" required>
+                </div>
+                <div class="form-group">
+                    <label for="label">Label</label>
+                    <input type="text" id="label" name="label" maxlength="100" placeholder="contoh: Drum" required>
+                </div>
+                <div class="form-group">
+                    <label for="display_order">Urutan Tampil</label>
+                    <input type="number" id="display_order" name="display_order" min="0" max="9999" value="0" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">Simpan Satuan</button>
+                </div>
+            </form>
+        </div>
+
         <div class="table-container">
             <div class="table-header">
                 <h3>Daftar Satuan</h3>
-                <div class="header-actions">
-                    <button type="button" class="btn-add" onclick="openAddModal()">
-                        <i class='bx bx-plus'></i>
-                        Tambah Satuan
-                    </button>
-                </div>
             </div>
 
             <table>
@@ -266,131 +232,44 @@ try {
             </table>
         </div>
 
-        <div id="add-unit-modal" class="unit-modal-overlay" aria-hidden="true">
-            <div class="unit-modal" role="dialog" aria-modal="true" aria-labelledby="add-unit-title">
-                <div class="unit-modal-header">
-                    <h3 id="add-unit-title">Tambah Satuan</h3>
-                    <button type="button" class="unit-modal-close" onclick="closeAddModal()" aria-label="Tutup">&times;</button>
-                </div>
-                <div class="unit-modal-body">
-                    <form method="POST" class="add-form">
-                        <input type="hidden" name="action" value="create_unit">
-                        <div class="form-group">
-                            <label for="add_value">Value (unik)</label>
-                            <input type="text" id="add_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" placeholder="contoh: drum" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="add_label">Label</label>
-                            <input type="text" id="add_label" name="label" maxlength="100" placeholder="contoh: Drum" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="add_display_order">Urutan Tampil</label>
-                            <input type="number" id="add_display_order" name="display_order" min="0" max="9999" value="0" required>
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn-submit">Simpan Satuan</button>
-                        </div>
-                    </form>
-                </div>
+        <div class="table-container" style="margin-top: 20px;">
+            <div class="table-header">
+                <h3>Edit Satuan</h3>
             </div>
-        </div>
-
-        <div id="edit-unit-modal" class="unit-modal-overlay" aria-hidden="true">
-            <div class="unit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-unit-title">
-                <div class="unit-modal-header">
-                    <h3 id="edit-unit-title">Edit Satuan</h3>
-                    <button type="button" class="unit-modal-close" onclick="closeEditModal()" aria-label="Tutup">&times;</button>
+            <form method="POST" class="add-form" id="edit-unit-form">
+                <input type="hidden" name="action" value="update_unit">
+                <input type="hidden" id="edit_unit_id" name="unit_id" value="">
+                <div class="form-group">
+                    <label for="edit_value">Value (unik)</label>
+                    <input type="text" id="edit_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" required>
                 </div>
-                <div class="unit-modal-body">
-                    <form method="POST" class="add-form" id="edit-unit-form">
-                        <input type="hidden" name="action" value="update_unit">
-                        <input type="hidden" id="edit_unit_id" name="unit_id" value="">
-                        <div class="form-group">
-                            <label for="edit_value">Value (unik)</label>
-                            <input type="text" id="edit_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_label">Label</label>
-                            <input type="text" id="edit_label" name="label" maxlength="100" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit_display_order">Urutan Tampil</label>
-                            <input type="number" id="edit_display_order" name="display_order" min="0" max="9999" required>
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn-submit">Update Satuan</button>
-                        </div>
-                    </form>
+                <div class="form-group">
+                    <label for="edit_label">Label</label>
+                    <input type="text" id="edit_label" name="label" maxlength="100" required>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label for="edit_display_order">Urutan Tampil</label>
+                    <input type="number" id="edit_display_order" name="display_order" min="0" max="9999" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">Update Satuan</button>
+                </div>
+            </form>
         </div>
     </main>
 
     <script src="script.js?<?php echo getVersion(); ?>"></script>
     <script>
-        function openAddModal() {
-            document.getElementById('add-unit-modal').classList.add('show');
-        }
-
-        function closeAddModal() {
-            document.getElementById('add-unit-modal').classList.remove('show');
-        }
-
-        function openEditModal() {
-            document.getElementById('edit-unit-modal').classList.add('show');
-        }
-
-        function closeEditModal() {
-            document.getElementById('edit-unit-modal').classList.remove('show');
-        }
-
         function fillEditForm(id, value, label, displayOrder) {
             document.getElementById('edit_unit_id').value = id;
             document.getElementById('edit_value').value = value;
             document.getElementById('edit_label').value = label;
             document.getElementById('edit_display_order').value = displayOrder;
-            openEditModal();
+            document.getElementById('edit-unit-form').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
         }
-
-        document.addEventListener('click', function(event) {
-            if (event.target.classList.contains('unit-modal-overlay')) {
-                event.target.classList.remove('show');
-            }
-        });
-
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeAddModal();
-                closeEditModal();
-            }
-        });
-
-        <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
-            <?php if (isset($_POST['action']) && $_POST['action'] === 'create_unit' && strpos($message, 'alert error') !== false): ?>
-                openAddModal();
-            <?php elseif (isset($_POST['action']) && $_POST['action'] === 'update_unit' && strpos($message, 'alert error') !== false): ?>
-                openEditModal();
-            <?php endif; ?>
-        <?php endif; ?>
-
-        <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_unit'): ?>
-            <?php if (isset($_POST['unit_id'], $_POST['value'], $_POST['label'], $_POST['display_order'])): ?>
-                fillEditForm(
-                    <?php echo (int)$_POST['unit_id']; ?>,
-                    <?php echo json_encode((string)$_POST['value']); ?>,
-                    <?php echo json_encode((string)$_POST['label']); ?>,
-                    <?php echo (int)$_POST['display_order']; ?>
-                );
-            <?php endif; ?>
-        <?php endif; ?>
-
-        <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_unit'): ?>
-            <?php if (strpos($message, 'alert error') !== false): ?>
-                document.getElementById('add_value').value = <?php echo json_encode(isset($_POST['value']) ? (string)$_POST['value'] : ''); ?>;
-                document.getElementById('add_label').value = <?php echo json_encode(isset($_POST['label']) ? (string)$_POST['label'] : ''); ?>;
-                document.getElementById('add_display_order').value = <?php echo (int)(isset($_POST['display_order']) ? $_POST['display_order'] : 0); ?>;
-            <?php endif; ?>
-        <?php endif; ?>
     </script>
 </body>
 
