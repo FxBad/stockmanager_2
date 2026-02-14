@@ -541,7 +541,7 @@ try {
         function updateLevelGroup(checkboxId, groupId) {
             const checkbox = document.getElementById(checkboxId);
             const group = document.getElementById(groupId);
-            const unitConversionGroup = document.getElementById(groupId.replace('level-group', 'unit-group-conversion'));
+            const unitConversionGroup = document.getElementById(checkboxId.replace('has_level', 'unit-group-conversion'));
             const conversionGroup = document.getElementById(groupId + '-conversion');
             const modeGroup = document.getElementById(groupId + '-mode');
             const customConversionGroup = document.getElementById(groupId + '-custom-conversion');
