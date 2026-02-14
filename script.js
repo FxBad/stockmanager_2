@@ -52,6 +52,8 @@ document.addEventListener("DOMContentLoaded", function () {
 	const filterButtons = document.querySelectorAll(
 		".dashboard-filter-buttons button",
 	);
+	const detailToggle = document.getElementById("dashboard-detail-toggle");
+	const detailPanels = document.querySelectorAll(".dashboard-detail-panel");
 	const rows = document.querySelectorAll(
 		".table-container tbody tr[data-status]",
 	);
@@ -59,6 +61,28 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (!rows.length) return;
 
 	let activeFilter = "all";
+	let detailExpanded = false;
+
+	function setDetailExpanded(nextState) {
+		detailExpanded = !!nextState;
+
+		detailPanels.forEach((panel) => {
+			panel.hidden = !detailExpanded;
+		});
+
+		if (detailToggle) {
+			detailToggle.dataset.expanded = detailExpanded ? "1" : "0";
+			detailToggle.setAttribute(
+				"aria-expanded",
+				detailExpanded ? "true" : "false",
+			);
+			detailToggle.textContent = detailExpanded
+				? "Sembunyikan Detail"
+				: "Tampilkan Detail Lanjutan";
+		}
+
+		applyDashboardFilters();
+	}
 
 	function applyDashboardFilters() {
 		const searchValue = (
@@ -73,12 +97,19 @@ document.addEventListener("DOMContentLoaded", function () {
 				row.getAttribute("data-status") || ""
 			).toLowerCase();
 			const isCritical = row.getAttribute("data-critical") === "1";
+			const isDefaultVisible =
+				row.getAttribute("data-default-visible") === "1";
 			const searchable = (
 				row.getAttribute("data-search") || ""
 			).toLowerCase();
 
 			const matchesSearch =
 				!searchValue || searchable.indexOf(searchValue) !== -1;
+
+			if (!detailExpanded) {
+				row.style.display = isDefaultVisible ? "" : "none";
+				return;
+			}
 
 			let matchesFilter = true;
 			if (activeFilter === "critical") {
@@ -104,7 +135,13 @@ document.addEventListener("DOMContentLoaded", function () {
 		searchInput.addEventListener("input", applyDashboardFilters);
 	}
 
-	applyDashboardFilters();
+	if (detailToggle) {
+		detailToggle.addEventListener("click", function () {
+			setDetailExpanded(!detailExpanded);
+		});
+	}
+
+	setDetailExpanded(false);
 });
 if (overlay && navBar) {
 	overlay.addEventListener("click", () => {

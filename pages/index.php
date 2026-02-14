@@ -92,6 +92,7 @@ $deltaOutStock = $kpiTargets['out-stock'] - $pctOutStock;
 $criticalCount = $lowStock + $outStock;
 $criticalPercentage = $totalItems > 0 ? ($criticalCount / $totalItems) * 100 : 0;
 $serviceLevelPercentage = 100 - $criticalPercentage;
+$defaultVisibleLimit = 5;
 
 $formatDelta = static function ($value) {
     return ($value >= 0 ? '+' : '') . number_format($value, 1) . '%';
@@ -169,7 +170,31 @@ $formatPercent = static function ($value) {
             </div>
         </div>
 
-        <section class="trend-section" aria-label="Visualisasi tren stok">
+        <div class="exception-summary <?php echo $criticalCount > 0 ? 'is-exception' : 'is-normal'; ?>">
+            <?php if ($criticalCount > 0): ?>
+                <div class="exception-copy">
+                    <h3>Butuh Tindakan Cepat</h3>
+                    <p><?php echo number_format($criticalCount); ?> item kritis terdeteksi. Prioritaskan pembaruan stok untuk mencegah stockout.</p>
+                </div>
+                <div class="exception-actions">
+                    <a class="exception-link" href="update-stock.php">Perbarui Stok Sekarang</a>
+                    <a class="exception-link ghost" href="view.php?status=out-stock">Lihat Item Habis</a>
+                </div>
+            <?php else: ?>
+                <div class="exception-copy">
+                    <h3>Kondisi Terkendali</h3>
+                    <p>Tidak ada item kritis saat ini. Ringkasan ditampilkan untuk verifikasi cepat.</p>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="detail-toggle-wrap">
+            <button type="button" id="dashboard-detail-toggle" class="detail-toggle-btn" data-expanded="0" aria-expanded="false">
+                Tampilkan Detail Lanjutan
+            </button>
+        </div>
+
+        <section class="trend-section dashboard-detail-panel" aria-label="Visualisasi tren stok" hidden>
             <div class="trend-header">
                 <h3>Tren Kondisi Stok</h3>
                 <span class="trend-caption">Total Item Aktif: <?php echo number_format($totalItems); ?></span>
@@ -213,7 +238,7 @@ $formatPercent = static function ($value) {
         <div class="table-container">
             <div class="table-heading-row">
                 <h3>Prioritas Operasional</h3>
-                <div class="dashboard-table-tools">
+                <div class="dashboard-table-tools dashboard-detail-panel" hidden>
                     <input type="text" id="dashboard-item-search" placeholder="Cari item..." aria-label="Cari item" />
                     <div class="dashboard-filter-buttons" role="group" aria-label="Filter prioritas item">
                         <button type="button" class="active" data-filter="all">Semua</button>
@@ -238,6 +263,10 @@ $formatPercent = static function ($value) {
                     </tr>
                 </thead>
                 <tbody>
+                    <?php
+                    $defaultCriticalShown = 0;
+                    $defaultNormalShown = 0;
+                    ?>
                     <?php foreach ($recentUpdates as $item):
                         // Normalize and cast fields to safe types
                         $name = isset($item['name']) ? (string)$item['name'] : '';
@@ -255,6 +284,19 @@ $formatPercent = static function ($value) {
                         $hasLevel = isset($item['has_level']) ? (bool)$item['has_level'] : false;
                         $isCritical = in_array($status, ['low-stock', 'warning-stock', 'out-stock'], true);
                         $priorityLabel = ($status === 'out-stock') ? 'P1' : (($isCritical) ? 'P2' : 'P3');
+
+                        $isDefaultVisible = false;
+                        if ($criticalCount > 0) {
+                            if ($isCritical && $defaultCriticalShown < $defaultVisibleLimit) {
+                                $isDefaultVisible = true;
+                                $defaultCriticalShown++;
+                            }
+                        } else {
+                            if ($defaultNormalShown < $defaultVisibleLimit) {
+                                $isDefaultVisible = true;
+                                $defaultNormalShown++;
+                            }
+                        }
 
                         $daysCoverage = calculateDaysCoverage(
                             $field_stock,
@@ -274,7 +316,7 @@ $formatPercent = static function ($value) {
                             ]
                         );
                     ?>
-                        <tr data-status="<?php echo htmlspecialchars($status); ?>" data-critical="<?php echo $isCritical ? '1' : '0'; ?>" data-search="<?php echo htmlspecialchars(strtolower(trim($name . ' ' . $category))); ?>" class="<?php echo $isCritical ? 'critical-row' : ''; ?>">
+                        <tr data-status="<?php echo htmlspecialchars($status); ?>" data-critical="<?php echo $isCritical ? '1' : '0'; ?>" data-default-visible="<?php echo $isDefaultVisible ? '1' : '0'; ?>" data-search="<?php echo htmlspecialchars(strtolower(trim($name . ' ' . $category))); ?>" class="<?php echo $isCritical ? 'critical-row' : ''; ?>">
                             <td data-label="Prioritas"><span class="priority-badge <?php echo $isCritical ? 'critical' : 'normal'; ?>"><?php echo $priorityLabel; ?></span></td>
                             <td data-label="Nama Barang"><?php echo htmlspecialchars($name); ?></td>
                             <td data-label="Kategori"><?php echo htmlspecialchars($category); ?></td>
@@ -290,15 +332,12 @@ $formatPercent = static function ($value) {
                                 <?php if (!empty($item['last_updated'])): ?>
                                     <span class="timestamp">
                                         <i class='bx bx-time-five'></i>
-                                        <?php
-                                        // Ensure date formatting is handled in PHP
-                                        echo date('d/m/Y, H:i', strtotime($item['last_updated'])) . ' WIB';
-                                        ?>
+                                        <?php echo htmlspecialchars(formatRelativeTimeId($item['last_updated'])); ?>
                                     </span>
                                 <?php else: ?>
                                     <span class="never-login">
                                         <i class='bx bx-x-circle'></i>
-                                        Tidak Pernah
+                                        Belum pernah diperbarui
                                     </span>
                                 <?php endif; ?>
                             </td>
