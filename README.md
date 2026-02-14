@@ -45,6 +45,14 @@ Untuk menjaga integritas data historis saat item dihapus, gunakan soft-delete pa
 - Endpoint hapus sekarang mengarsipkan item (`deleted_at`/`deleted_by`), bukan menghapus permanen.
 - Seluruh halaman utama dan endpoint filter/autocomplete hanya menampilkan item aktif (`deleted_at IS NULL`).
 
+## Migrasi Konversi Level (Penting)
+
+Untuk memisahkan perhitungan konversi stok berbasis jumlah dan berbasis level:
+
+- Jalankan skrip: `sql/2026-02-14-add-level-conversion.sql`
+- Menambahkan kolom baru: `items.level_conversion`
+- Form tambah/edit barang kini memiliki input terpisah untuk `unit_conversion` dan `level_conversion`.
+
 ## Status Deprecated (Per 2026-02-14)
 
 Elemen berikut telah ditetapkan sebagai **deprecated** dan dipertahankan sementara untuk kompatibilitas transisi:

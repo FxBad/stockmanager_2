@@ -181,23 +181,33 @@ function resolveDailyConsumption($dailyConsumption, array $context = [])
     ];
 }
 
+function calculateEffectiveStock($fieldStock, $unitConversion, $level = null, $hasLevel = false, array $context = [])
+{
+    $qtyStock = max(0.0, (float)$fieldStock);
+    $qtyConversion = max(0.0, (float)$unitConversion);
+
+    if (!(bool)$hasLevel) {
+        return $qtyStock * $qtyConversion;
+    }
+
+    $levelStock = ($level === null || $level === '') ? 0.0 : max(0.0, (float)$level);
+    $levelConversion = isset($context['level_conversion']) && is_numeric($context['level_conversion'])
+        ? max(0.0, (float)$context['level_conversion'])
+        : $qtyConversion;
+    $qtyConversionCombined = isset($context['qty_conversion']) && is_numeric($context['qty_conversion'])
+        ? max(0.0, (float)$context['qty_conversion'])
+        : $qtyConversion;
+
+    return ($levelStock * $levelConversion) + ($qtyStock * $qtyConversionCombined);
+}
+
 function calculateDaysCoverage($fieldStock, $warehouseStock, $unitConversion, $dailyConsumption, $itemName = null, $level = null, $hasLevel = false, array $fallbackContext = [])
 {
     // Note: $warehouseStock parameter kept for backward compatibility but no longer used
-    // If hasLevel is true, coverage uses level-based effective stock:
-    // days_coverage = floor(((field_stock * unit_conversion) * (level / 100)) / daily_consumption)
-    $isLevelBased = (bool)$hasLevel;
-
-    if ($isLevelBased) {
-        if ($level === null || $level === '') {
-            return 0;
-        }
-        $totalStock = ($fieldStock) * $unitConversion;
-        $multiplier = ((float)$level) / 100.0;
-        $effectiveStock = $totalStock * $multiplier;
-    } else {
-        $effectiveStock = ($fieldStock) * $unitConversion;
-    }
+    // If hasLevel is true, coverage uses combined stock formula:
+    // effective_stock = (level * level_conversion) + (field_stock * qty_conversion)
+    // days_coverage = floor(effective_stock / daily_consumption)
+    $effectiveStock = calculateEffectiveStock($fieldStock, $unitConversion, $level, $hasLevel, $fallbackContext);
 
     $fallbackContext['effective_stock'] = $effectiveStock;
     $resolved = resolveDailyConsumption($dailyConsumption, $fallbackContext);
@@ -237,6 +247,7 @@ function itemSchemaFlags()
     $flags = [
         'items_has_level_flag' => db_has_column('items', 'has_level'),
         'items_has_level_value' => db_has_column('items', 'level'),
+        'items_has_level_conversion' => db_has_column('items', 'level_conversion'),
         'items_has_warehouse_stock' => db_has_column('items', 'warehouse_stock'),
         'items_has_calculation_type' => db_has_column('items', 'calculation_type'),
         'hist_has_level' => db_has_column('item_stock_history', 'level'),
@@ -260,12 +271,18 @@ function normalizeItemInput(array $input, array $schema)
         $levelVal = (int)$levelInput;
     }
 
+    $qtyConversion = isset($input['unit_conversion']) && is_numeric($input['unit_conversion']) ? round((float)$input['unit_conversion'], 1) : 1.0;
+    $levelConversion = isset($input['level_conversion']) && is_numeric($input['level_conversion'])
+        ? round((float)$input['level_conversion'], 1)
+        : $qtyConversion;
+
     return [
         'name' => isset($input['name']) ? trim((string)$input['name']) : '',
         'category' => isset($input['category']) ? trim((string)$input['category']) : '',
         'field_stock' => isset($input['field_stock']) && is_numeric($input['field_stock']) ? (int)$input['field_stock'] : 0,
         'unit' => isset($input['unit']) ? trim((string)$input['unit']) : '',
-        'unit_conversion' => isset($input['unit_conversion']) && is_numeric($input['unit_conversion']) ? round((float)$input['unit_conversion'], 1) : 1.0,
+        'unit_conversion' => $qtyConversion,
+        'level_conversion' => $levelConversion,
         'daily_consumption' => isset($input['daily_consumption']) && is_numeric($input['daily_consumption']) ? round((float)$input['daily_consumption'], 1) : 0.0,
         'min_days_coverage' => isset($input['min_days_coverage']) && is_numeric($input['min_days_coverage']) ? (int)$input['min_days_coverage'] : 1,
         'description' => isset($input['description']) ? trim((string)$input['description']) : '',
@@ -295,6 +312,9 @@ function validateItemInput(array $normalized, array $schema)
     }
     if ($normalized['unit_conversion'] <= 0) {
         $errors[] = 'Faktor konversi harus lebih dari 0.';
+    }
+    if ($normalized['level_conversion'] <= 0) {
+        $errors[] = 'Faktor konversi level harus lebih dari 0.';
     }
     if ($normalized['daily_consumption'] < 0) {
         $errors[] = 'Konsumsi harian tidak boleh negatif.';
@@ -360,7 +380,16 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
 
     try {
         if ($mode === 'create') {
-            $totalStockNew = ($normalized['field_stock'] + $warehouseStock) * $normalized['unit_conversion'];
+            $totalStockNew = calculateEffectiveStock(
+                $normalized['field_stock'],
+                $normalized['unit_conversion'],
+                $normalized['level'],
+                (bool)$normalized['has_level'],
+                [
+                    'level_conversion' => $normalized['level_conversion'],
+                    'qty_conversion' => $normalized['unit_conversion']
+                ]
+            );
             $daysCoverageNew = calculateDaysCoverage(
                 $normalized['field_stock'],
                 0,
@@ -371,7 +400,9 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 (bool)$normalized['has_level'],
                 [
                     'category' => $normalized['category'],
-                    'min_days_coverage' => $normalized['min_days_coverage']
+                    'min_days_coverage' => $normalized['min_days_coverage'],
+                    'level_conversion' => $normalized['level_conversion'],
+                    'qty_conversion' => $normalized['unit_conversion']
                 ]
             );
             $statusNew = determineStatus($daysCoverageNew, $normalized['min_days_coverage']);
@@ -389,6 +420,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 'field_stock',
                 'unit',
                 'unit_conversion',
+                'level_conversion',
                 'daily_consumption',
                 'min_days_coverage',
                 'description',
@@ -401,6 +433,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 ':field_stock',
                 ':unit',
                 ':unit_conversion',
+                ':level_conversion',
                 ':daily_consumption',
                 ':min_days_coverage',
                 ':description',
@@ -425,6 +458,13 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 array_splice($columns, 8, 0, 'has_level');
                 array_splice($placeholders, 8, 0, ':has_level');
             }
+            if (empty($schema['items_has_level_conversion'])) {
+                $idx = array_search('level_conversion', $columns, true);
+                if ($idx !== false) {
+                    array_splice($columns, $idx, 1);
+                    array_splice($placeholders, $idx, 1);
+                }
+            }
 
             $stmt = $pdo->prepare('INSERT INTO items (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')');
             $params = [
@@ -433,12 +473,17 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
                 ':field_stock' => $normalized['field_stock'],
                 ':unit' => $normalized['unit'],
                 ':unit_conversion' => $normalized['unit_conversion'],
+                ':level_conversion' => $normalized['level_conversion'],
                 ':daily_consumption' => $normalized['daily_consumption'],
                 ':min_days_coverage' => $normalized['min_days_coverage'],
                 ':description' => $normalized['description'],
                 ':added_by' => (int)$userId,
                 ':status' => $statusNew,
             ];
+
+            if (empty($schema['items_has_level_conversion'])) {
+                unset($params[':level_conversion']);
+            }
 
             if (!empty($schema['items_has_warehouse_stock'])) {
                 $params[':warehouse_stock'] = $warehouseStock;
@@ -502,7 +547,16 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
 
         $pdo->beginTransaction();
 
-        $newTotal = ($normalized['field_stock']) * $normalized['unit_conversion'];
+        $newTotal = calculateEffectiveStock(
+            $normalized['field_stock'],
+            $normalized['unit_conversion'],
+            $normalized['level'],
+            (bool)$normalized['has_level'],
+            [
+                'level_conversion' => $normalized['level_conversion'],
+                'qty_conversion' => $normalized['unit_conversion']
+            ]
+        );
         $newDays = calculateDaysCoverage(
             $normalized['field_stock'],
             0,
@@ -514,7 +568,9 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             [
                 'item_id' => $itemId,
                 'category' => $normalized['category'],
-                'min_days_coverage' => $normalized['min_days_coverage']
+                'min_days_coverage' => $normalized['min_days_coverage'],
+                'level_conversion' => $normalized['level_conversion'],
+                'qty_conversion' => $normalized['unit_conversion']
             ]
         );
         $resolvedDaily = resolveDailyConsumption($normalized['daily_consumption'], [
@@ -531,6 +587,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             'field_stock = :field_stock',
             'unit = :unit',
             'unit_conversion = :unit_conversion',
+            'level_conversion = :level_conversion',
             'daily_consumption = :daily_consumption',
             'min_days_coverage = :min_days_coverage',
             'description = :description',
@@ -543,6 +600,12 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
         if (!empty($schema['items_has_level_flag'])) {
             $set[] = 'has_level = :has_level';
         }
+        if (empty($schema['items_has_level_conversion'])) {
+            $idx = array_search('level_conversion = :level_conversion', $set, true);
+            if ($idx !== false) {
+                array_splice($set, $idx, 1);
+            }
+        }
 
         $stmtUpdate = $pdo->prepare('UPDATE items SET ' . implode(', ', $set) . ' WHERE id = :id AND ' . activeItemsWhereSql());
         $updateParams = [
@@ -551,6 +614,7 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             ':field_stock' => $normalized['field_stock'],
             ':unit' => $normalized['unit'],
             ':unit_conversion' => $normalized['unit_conversion'],
+            ':level_conversion' => $normalized['level_conversion'],
             ':daily_consumption' => $normalized['daily_consumption'],
             ':min_days_coverage' => $normalized['min_days_coverage'],
             ':description' => $normalized['description'],
@@ -558,6 +622,9 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             ':status' => $newStatus,
             ':id' => $itemId,
         ];
+        if (empty($schema['items_has_level_conversion'])) {
+            unset($updateParams[':level_conversion']);
+        }
         if (!empty($schema['items_has_level_value'])) {
             $updateParams[':level'] = $normalized['level'];
         }
@@ -567,7 +634,16 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
 
         $stmtUpdate->execute($updateParams);
 
-        $oldTotal = ((float)($old['field_stock'] ?? 0)) * ((float)($old['unit_conversion'] ?? 1));
+        $oldTotal = calculateEffectiveStock(
+            (float)($old['field_stock'] ?? 0),
+            (float)($old['unit_conversion'] ?? 1),
+            array_key_exists('level', $old) ? $old['level'] : null,
+            isset($old['has_level']) ? (bool)$old['has_level'] : false,
+            [
+                'level_conversion' => isset($old['level_conversion']) ? (float)$old['level_conversion'] : (float)($old['unit_conversion'] ?? 1),
+                'qty_conversion' => (float)($old['unit_conversion'] ?? 1)
+            ]
+        );
         $oldHasLevel = isset($old['has_level']) ? (bool)$old['has_level'] : false;
         $oldDays = calculateDaysCoverage(
             (float)($old['field_stock'] ?? 0),
@@ -580,7 +656,9 @@ function saveItemWithHistory(array $input, $userId, $mode = 'create', array $opt
             [
                 'item_id' => $itemId,
                 'category' => (string)($old['category'] ?? ''),
-                'min_days_coverage' => (int)($old['min_days_coverage'] ?? 1)
+                'min_days_coverage' => (int)($old['min_days_coverage'] ?? 1),
+                'level_conversion' => isset($old['level_conversion']) ? (float)$old['level_conversion'] : (float)($old['unit_conversion'] ?? 1),
+                'qty_conversion' => (float)($old['unit_conversion'] ?? 1)
             ]
         );
 

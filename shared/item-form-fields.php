@@ -11,6 +11,7 @@ $categoryValue = isset($formState['category']) ? (string)$formState['category'] 
 $fieldStockValue = isset($formState['field_stock']) ? (int)$formState['field_stock'] : 0;
 $unitValue = isset($formState['unit']) ? (string)$formState['unit'] : '';
 $unitConversionValue = isset($formState['unit_conversion']) ? (float)$formState['unit_conversion'] : 1.0;
+$levelConversionValue = isset($formState['level_conversion']) ? (float)$formState['level_conversion'] : $unitConversionValue;
 $dailyConsumptionValue = isset($formState['daily_consumption']) ? (float)$formState['daily_consumption'] : 0.0;
 $minDaysCoverageValue = isset($formState['min_days_coverage']) ? (int)$formState['min_days_coverage'] : 7;
 $descriptionValue = isset($formState['description']) ? (string)$formState['description'] : '';
@@ -114,5 +115,10 @@ foreach ($formUnits as $unitOption) {
     <div class="form-group" id="<?php echo htmlspecialchars($formLevelGroupId); ?>" style="<?php echo $hasLevelValue === 1 ? '' : 'display:none;'; ?>">
         <label for="<?php echo htmlspecialchars($formPrefix . 'level'); ?>">Level (cm)</label>
         <input type="number" id="<?php echo htmlspecialchars($formPrefix . 'level'); ?>" name="level" min="0" step="1" value="<?php echo htmlspecialchars($levelValue); ?>">
+    </div>
+
+    <div class="form-group" id="<?php echo htmlspecialchars($formLevelGroupId . '-conversion'); ?>" style="<?php echo $hasLevelValue === 1 ? '' : 'display:none;'; ?>">
+        <label for="<?php echo htmlspecialchars($formPrefix . 'level_conversion'); ?>">Faktor Konversi Level</label>
+        <input type="number" id="<?php echo htmlspecialchars($formPrefix . 'level_conversion'); ?>" name="level_conversion" min="0.1" step="0.1" value="<?php echo number_format($levelConversionValue, 1, '.', ''); ?>">
     </div>
 <?php endif; ?>

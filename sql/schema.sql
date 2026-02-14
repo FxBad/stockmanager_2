@@ -14,11 +14,6 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
-
--- Dumping database structure for stockmanager_test
-CREATE DATABASE IF NOT EXISTS `stockmanager_test` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
-USE `stockmanager_test`;
-
 -- Dumping structure for table stockmanager_test.access_log
 CREATE TABLE IF NOT EXISTS `access_log` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -30,8 +25,6 @@ CREATE TABLE IF NOT EXISTS `access_log` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Data exporting was unselected.
-
 -- Dumping structure for table stockmanager_test.items
 CREATE TABLE IF NOT EXISTS `items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -42,6 +35,7 @@ CREATE TABLE IF NOT EXISTS `items` (
   `warehouse_stock` int(11) NOT NULL DEFAULT 0,
   `unit` varchar(20) NOT NULL DEFAULT '',
   `unit_conversion` decimal(12,4) NOT NULL DEFAULT 1.0000,
+  `level_conversion` decimal(12,4) NOT NULL DEFAULT 1.0000,
   `daily_consumption` decimal(12,4) NOT NULL DEFAULT 0.0000,
   `min_days_coverage` int(11) NOT NULL DEFAULT 1,
   `description` text DEFAULT NULL,
@@ -65,8 +59,6 @@ CREATE TABLE IF NOT EXISTS `items` (
   CONSTRAINT `items_ibfk_3` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Data exporting was unselected.
-
 -- Dumping structure for table stockmanager_test.item_categories
 CREATE TABLE IF NOT EXISTS `item_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -88,8 +80,6 @@ SELECT * FROM (
 WHERE NOT EXISTS (
   SELECT 1 FROM `item_categories` c WHERE c.name = seed.name
 );
-
--- Data exporting was unselected.
 
 -- Dumping structure for table stockmanager_test.item_stock_history
 CREATE TABLE IF NOT EXISTS `item_stock_history` (
@@ -121,8 +111,6 @@ CREATE TABLE IF NOT EXISTS `item_stock_history` (
   KEY `item_id` (`item_id`),
   CONSTRAINT `item_stock_history_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Data exporting was unselected.
 
 -- DEPRECATED: legacy table, not used by current application flow (orphan candidate)
 -- Dumping structure for table stockmanager_test.products

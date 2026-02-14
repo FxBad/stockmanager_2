@@ -68,7 +68,17 @@ try {
     }
 
     // Prepare history data
-    $totalStock = ($item['field_stock']) * $item['unit_conversion'];
+    $levelConversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : (float)$item['unit_conversion'];
+    $totalStock = calculateEffectiveStock(
+        $item['field_stock'],
+        $item['unit_conversion'],
+        isset($item['level']) ? $item['level'] : null,
+        isset($item['has_level']) ? (bool)$item['has_level'] : false,
+        [
+            'level_conversion' => $levelConversion,
+            'qty_conversion' => (float)$item['unit_conversion']
+        ]
+    );
     $daysCoverage = calculateDaysCoverage(
         $item['field_stock'],
         0,
@@ -80,7 +90,9 @@ try {
         [
             'item_id' => $itemId,
             'category' => isset($item['category']) ? $item['category'] : '',
-            'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
+            'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
+            'level_conversion' => $levelConversion,
+            'qty_conversion' => (float)$item['unit_conversion']
         ]
     );
 

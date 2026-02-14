@@ -303,10 +303,16 @@ function initLevelToggle(root = document) {
 	const nameEl = root.querySelector("#name");
 	const hasLevelEl = root.querySelector("#has_level");
 	const levelGroup = root.querySelector("#level-group");
+	const levelConversionGroup = root.querySelector("#level-group-conversion");
 	if (!levelGroup) return;
 	function toggle() {
 		if (hasLevelEl) {
 			levelGroup.style.display = hasLevelEl.checked ? "" : "none";
+			if (levelConversionGroup) {
+				levelConversionGroup.style.display = hasLevelEl.checked
+					? ""
+					: "none";
+			}
 			return;
 		}
 
@@ -316,8 +322,14 @@ function initLevelToggle(root = document) {
 			nameEl.value.trim().toUpperCase() === "DMDS"
 		) {
 			levelGroup.style.display = "";
+			if (levelConversionGroup) {
+				levelConversionGroup.style.display = "";
+			}
 		} else {
 			levelGroup.style.display = "none";
+			if (levelConversionGroup) {
+				levelConversionGroup.style.display = "none";
+			}
 		}
 	}
 	if (hasLevelEl) {

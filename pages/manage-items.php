@@ -13,9 +13,11 @@ $itemCategories = getItemCategories();
 
 $itemsHasLevelFlag = db_has_column('items', 'has_level');
 $itemsHasLevelValue = db_has_column('items', 'level');
+$itemsHasLevelConversion = db_has_column('items', 'level_conversion');
 
 $hasLevelSelect = $itemsHasLevelFlag ? ', i.has_level' : '';
 $levelSelect = $itemsHasLevelValue ? ', i.level' : ', NULL AS level';
+$levelConversionSelect = $itemsHasLevelConversion ? ', i.level_conversion' : ', i.unit_conversion AS level_conversion';
 
 $modalToOpen = '';
 $addItemState = [
@@ -24,6 +26,7 @@ $addItemState = [
     'field_stock' => 0,
     'unit' => '',
     'unit_conversion' => 1.0,
+    'level_conversion' => 1.0,
     'daily_consumption' => 0.0,
     'min_days_coverage' => 7,
     'description' => '',
@@ -37,6 +40,7 @@ $editItemState = [
     'field_stock' => 0,
     'unit' => '',
     'unit_conversion' => 1.0,
+    'level_conversion' => 1.0,
     'daily_consumption' => 0.0,
     'min_days_coverage' => 7,
     'description' => '',
@@ -62,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'field_stock' => $result['data']['field_stock'],
                     'unit' => $result['data']['unit'],
                     'unit_conversion' => $result['data']['unit_conversion'],
+                    'level_conversion' => $result['data']['level_conversion'],
                     'daily_consumption' => $result['data']['daily_consumption'],
                     'min_days_coverage' => $result['data']['min_days_coverage'],
                     'description' => $result['data']['description'],
@@ -76,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'field_stock' => $result['data']['field_stock'],
                     'unit' => $result['data']['unit'],
                     'unit_conversion' => $result['data']['unit_conversion'],
+                    'level_conversion' => $result['data']['level_conversion'],
                     'daily_consumption' => $result['data']['daily_consumption'],
                     'min_days_coverage' => $result['data']['min_days_coverage'],
                     'description' => $result['data']['description'],
@@ -145,7 +151,7 @@ if (!in_array($sortBy, $validSortColumns)) {
 }
 
 $query = "SELECT 
-            i.id, i.name, i.category, i.field_stock, i.unit, i.unit_conversion, i.daily_consumption, i.min_days_coverage, i.description{$levelSelect}, i.status, i.last_updated, i.added_by as added_by_id, i.updated_by as updated_by_id{$hasLevelSelect},
+            i.id, i.name, i.category, i.field_stock, i.unit, i.unit_conversion{$levelConversionSelect}, i.daily_consumption, i.min_days_coverage, i.description{$levelSelect}, i.status, i.last_updated, i.added_by as added_by_id, i.updated_by as updated_by_id{$hasLevelSelect},
             u.username AS added_by_name, u2.username AS updated_by_name
         FROM items i
         LEFT JOIN users u ON i.added_by = u.id
@@ -294,6 +300,7 @@ try {
                         $field_stock = isset($item['field_stock']) ? (float)$item['field_stock'] : 0;
                         $unit_conversion = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1;
                         $daily_consumption = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0;
+                        $level_conversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unit_conversion;
                         $level = array_key_exists('level', $item) ? $item['level'] : null;
                         $hasLevel = isset($item['has_level']) ? (bool)$item['has_level'] : false;
                         $status = isset($item['status']) ? (string)$item['status'] : '';
@@ -309,14 +316,21 @@ try {
                             [
                                 'item_id' => $id,
                                 'category' => $category,
-                                'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
+                                'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
+                                'level_conversion' => $level_conversion,
+                                'qty_conversion' => $unit_conversion
                             ]
                         );
+
+                        $effectiveStock = calculateEffectiveStock($field_stock, $unit_conversion, $level, $hasLevel, [
+                            'level_conversion' => $level_conversion,
+                            'qty_conversion' => $unit_conversion
+                        ]);
 
                         $resolvedDaily = resolveDailyConsumption($daily_consumption, [
                             'item_id' => $id,
                             'category' => $category,
-                            'effective_stock' => ($field_stock * $unit_conversion),
+                            'effective_stock' => $effectiveStock,
                             'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
                         ]);
                     ?>
@@ -352,6 +366,7 @@ try {
                                         data-field-stock="<?php echo (int)$item['field_stock']; ?>"
                                         data-unit="<?php echo htmlspecialchars((string)$item['unit'], ENT_QUOTES); ?>"
                                         data-unit-conversion="<?php echo number_format((float)$item['unit_conversion'], 1, '.', ''); ?>"
+                                        data-level-conversion="<?php echo number_format((float)($item['level_conversion'] ?? $item['unit_conversion']), 1, '.', ''); ?>"
                                         data-daily-consumption="<?php echo number_format((float)$item['daily_consumption'], 1, '.', ''); ?>"
                                         data-min-days-coverage="<?php echo (int)$item['min_days_coverage']; ?>"
                                         data-description="<?php echo htmlspecialchars((string)($item['description'] ?? ''), ENT_QUOTES); ?>"
@@ -443,10 +458,12 @@ try {
                 form.reset();
                 const addFieldStock = document.getElementById('add_field_stock');
                 const addUnitConv = document.getElementById('add_unit_conversion');
+                const addLevelConv = document.getElementById('add_level_conversion');
                 const addDaily = document.getElementById('add_daily_consumption');
                 const addMinDays = document.getElementById('add_min_days_coverage');
                 if (addFieldStock) addFieldStock.value = 0;
                 if (addUnitConv) addUnitConv.value = '1.0';
+                if (addLevelConv) addLevelConv.value = '1.0';
                 if (addDaily) addDaily.value = '0.0';
                 if (addMinDays) addMinDays.value = 7;
             }
@@ -465,6 +482,10 @@ try {
             document.getElementById('edit_field_stock').value = button.dataset.fieldStock || 0;
             document.getElementById('edit_unit').value = button.dataset.unit || '';
             document.getElementById('edit_unit_conversion').value = button.dataset.unitConversion || '1.0';
+            const editLevelConversion = document.getElementById('edit_level_conversion');
+            if (editLevelConversion) {
+                editLevelConversion.value = button.dataset.levelConversion || button.dataset.unitConversion || '1.0';
+            }
             document.getElementById('edit_daily_consumption').value = button.dataset.dailyConsumption || '0.0';
             document.getElementById('edit_min_days_coverage').value = button.dataset.minDaysCoverage || 1;
             document.getElementById('edit_description').value = button.dataset.description || '';
@@ -498,12 +519,15 @@ try {
         function updateLevelGroup(checkboxId, groupId) {
             const checkbox = document.getElementById(checkboxId);
             const group = document.getElementById(groupId);
+            const conversionGroup = document.getElementById(groupId + '-conversion');
             if (!group) return;
             if (!checkbox) {
                 group.style.display = 'none';
+                if (conversionGroup) conversionGroup.style.display = 'none';
                 return;
             }
             group.style.display = checkbox.checked ? 'block' : 'none';
+            if (conversionGroup) conversionGroup.style.display = checkbox.checked ? 'block' : 'none';
         }
 
         const addHasLevel = document.getElementById('add_has_level');

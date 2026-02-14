@@ -43,9 +43,11 @@ if (!in_array($sortBy, $validSortColumns, true)) {
 
 $hasLevelCol = db_has_column('items', 'has_level');
 $levelSelect = $hasLevelCol ? ', i.has_level' : '';
+$hasLevelConversionCol = db_has_column('items', 'level_conversion');
+$levelConversionSelect = $hasLevelConversionCol ? ', i.level_conversion' : ', i.unit_conversion AS level_conversion';
 
 $query = "SELECT
-            i.id, i.name, i.category, i.field_stock, i.unit_conversion, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.last_updated,
+            i.id, i.name, i.category, i.field_stock, i.unit_conversion{$levelConversionSelect}, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.last_updated,
             u.full_name as added_by_name,
             u2.full_name as updated_by_name{$levelSelect}
           FROM items i
@@ -97,6 +99,7 @@ try {
             $itemCategory = isset($item['category']) ? (string)$item['category'] : '';
             $fieldStock = isset($item['field_stock']) ? (float)$item['field_stock'] : 0;
             $unitConversion = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1;
+            $levelConversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unitConversion;
             $dailyConsumption = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0;
             $level = array_key_exists('level', $item) ? $item['level'] : null;
             $itemStatus = isset($item['status']) ? (string)$item['status'] : '';
@@ -113,14 +116,21 @@ try {
                 [
                     'item_id' => $id,
                     'category' => $itemCategory,
-                    'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
+                    'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
+                    'level_conversion' => $levelConversion,
+                    'qty_conversion' => $unitConversion
                 ]
             );
+
+            $effectiveStock = calculateEffectiveStock($fieldStock, $unitConversion, $level, $hasLevel, [
+                'level_conversion' => $levelConversion,
+                'qty_conversion' => $unitConversion
+            ]);
 
             $resolvedDaily = resolveDailyConsumption($dailyConsumption, [
                 'item_id' => $id,
                 'category' => $itemCategory,
-                'effective_stock' => ($fieldStock * $unitConversion),
+                'effective_stock' => $effectiveStock,
                 'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
             ]);
 
