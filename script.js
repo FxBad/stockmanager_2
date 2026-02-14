@@ -43,6 +43,65 @@ document.addEventListener("DOMContentLoaded", function () {
 	// run once to populate count
 	applyFilter();
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+	const tools = document.querySelector(".dashboard-table-tools");
+	if (!tools) return;
+
+	const searchInput = document.getElementById("dashboard-item-search");
+	const filterButtons = document.querySelectorAll(
+		".dashboard-filter-buttons button",
+	);
+	const rows = document.querySelectorAll(
+		".table-container tbody tr[data-status]",
+	);
+
+	if (!rows.length) return;
+
+	let activeFilter = "all";
+
+	function applyDashboardFilters() {
+		const searchValue = (searchInput && searchInput.value
+			? searchInput.value
+			: ""
+		)
+			.toString()
+			.trim()
+			.toLowerCase();
+
+		rows.forEach((row) => {
+			const status = (row.getAttribute("data-status") || "").toLowerCase();
+			const isCritical = row.getAttribute("data-critical") === "1";
+			const searchable = (row.getAttribute("data-search") || "").toLowerCase();
+
+			const matchesSearch = !searchValue || searchable.indexOf(searchValue) !== -1;
+
+			let matchesFilter = true;
+			if (activeFilter === "critical") {
+				matchesFilter = isCritical;
+			} else if (activeFilter === "in-stock") {
+				matchesFilter = status === "in-stock";
+			}
+
+			row.style.display = matchesSearch && matchesFilter ? "" : "none";
+		});
+	}
+
+	filterButtons.forEach((btn) => {
+		btn.addEventListener("click", function () {
+			activeFilter = this.getAttribute("data-filter") || "all";
+			filterButtons.forEach((item) => item.classList.remove("active"));
+			this.classList.add("active");
+			applyDashboardFilters();
+		});
+	});
+
+	if (searchInput) {
+		searchInput.addEventListener("input", applyDashboardFilters);
+	}
+
+	applyDashboardFilters();
+});
 if (overlay && navBar) {
 	overlay.addEventListener("click", () => {
 		navBar.classList.remove("open");
