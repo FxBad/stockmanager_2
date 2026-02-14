@@ -25,54 +25,104 @@ $outStock = 0;
 $totalItems = 0;
 $recentUpdates = [];
 
+$dashboardCacheKey = 'dashboard_summary_v1';
+$dashboardCacheTtl = 45;
+$dashboardSchemaKey = 'dashboard_schema_flags_v1';
+$dashboardSchemaTtl = 86400;
+$nowTs = time();
+$cacheEntry = isset($_SESSION[$dashboardCacheKey]) && is_array($_SESSION[$dashboardCacheKey])
+    ? $_SESSION[$dashboardCacheKey]
+    : null;
+
+$useCache = false;
+if ($cacheEntry && isset($cacheEntry['cached_at'], $cacheEntry['inStock'], $cacheEntry['lowStock'], $cacheEntry['outStock'], $cacheEntry['recentUpdates'])) {
+    $cacheAge = $nowTs - (int)$cacheEntry['cached_at'];
+    if ($cacheAge >= 0 && $cacheAge <= $dashboardCacheTtl) {
+        $inStock = (int)$cacheEntry['inStock'];
+        $lowStock = (int)$cacheEntry['lowStock'];
+        $outStock = (int)$cacheEntry['outStock'];
+        $recentUpdates = is_array($cacheEntry['recentUpdates']) ? $cacheEntry['recentUpdates'] : [];
+        $useCache = true;
+    }
+}
+
 // Consolidated counts (single query) and safe fetch of recent updates
-try {
-    $stmt = $pdo->query(
-        "SELECT
-            SUM(status = 'in-stock') AS instock,
-            SUM(status IN ('low-stock', 'warning-stock')) AS lowstock,
-            SUM(status = 'out-stock') AS outstock
-        FROM items
-        WHERE " . activeItemsWhereSql()
-    );
-    $counts = $stmt->fetch(PDO::FETCH_ASSOC);
-    $inStock = isset($counts['instock']) ? (int)$counts['instock'] : 0;
-    $lowStock = isset($counts['lowstock']) ? (int)$counts['lowstock'] : 0;
-    $outStock = isset($counts['outstock']) ? (int)$counts['outstock'] : 0;
+if (!$useCache) {
+    try {
+        $stmt = $pdo->query(
+            "SELECT
+                SUM(status = 'in-stock') AS instock,
+                SUM(status IN ('low-stock', 'warning-stock')) AS lowstock,
+                SUM(status = 'out-stock') AS outstock
+            FROM items
+            WHERE " . activeItemsWhereSql()
+        );
+        $counts = $stmt->fetch(PDO::FETCH_ASSOC);
+        $inStock = isset($counts['instock']) ? (int)$counts['instock'] : 0;
+        $lowStock = isset($counts['lowstock']) ? (int)$counts['lowstock'] : 0;
+        $outStock = isset($counts['outstock']) ? (int)$counts['outstock'] : 0;
 
-    // Check for has_level column
-    $hasLevelCol = db_has_column('items', 'has_level');
-    $levelSelect = $hasLevelCol ? ', i.has_level' : '';
-    $hasLevelConversionCol = db_has_column('items', 'level_conversion');
-    $levelConversionSelect = $hasLevelConversionCol ? ', i.level_conversion' : ', i.unit_conversion AS level_conversion';
-    $hasCalculationModeCol = db_has_column('items', 'calculation_mode');
-    $calculationModeSelect = $hasCalculationModeCol ? ', i.calculation_mode' : ", 'combined' AS calculation_mode";
+        $schemaFlags = isset($_SESSION[$dashboardSchemaKey]) && is_array($_SESSION[$dashboardSchemaKey])
+            ? $_SESSION[$dashboardSchemaKey]
+            : null;
 
-    // Get recent updates with critical-first priority then newest updates
-    $stmt = $pdo->query(
-        "SELECT i.id, i.name, i.category, i.field_stock, i.unit_conversion{$levelConversionSelect}{$calculationModeSelect}, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.last_updated, u.username AS updated_by_name{$levelSelect}
-         FROM items i
-         LEFT JOIN users u ON i.updated_by = u.id
-            WHERE " . activeItemsWhereSql('i') . "
-         ORDER BY
-            CASE
-                WHEN i.status = 'out-stock' THEN 1
-                WHEN i.status IN ('low-stock', 'warning-stock') THEN 2
-                WHEN i.status = 'in-stock' THEN 3
-                ELSE 4
-            END,
-            COALESCE(i.last_updated, '1970-01-01 00:00:00') DESC,
-            i.id DESC
-         LIMIT 8"
-    );
-    $recentUpdates = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    if (!is_array($recentUpdates)) {
+        $schemaFresh = false;
+        if ($schemaFlags && isset($schemaFlags['cached_at'])) {
+            $schemaFresh = (($nowTs - (int)$schemaFlags['cached_at']) >= 0) && (($nowTs - (int)$schemaFlags['cached_at']) <= $dashboardSchemaTtl);
+        }
+
+        if (!$schemaFresh) {
+            $schemaFlags = [
+                'cached_at' => $nowTs,
+                'has_level' => db_has_column('items', 'has_level'),
+                'has_level_conversion' => db_has_column('items', 'level_conversion'),
+                'has_calculation_mode' => db_has_column('items', 'calculation_mode'),
+            ];
+            $_SESSION[$dashboardSchemaKey] = $schemaFlags;
+        }
+
+        $hasLevelCol = !empty($schemaFlags['has_level']);
+        $hasLevelConversionCol = !empty($schemaFlags['has_level_conversion']);
+        $hasCalculationModeCol = !empty($schemaFlags['has_calculation_mode']);
+
+        $levelSelect = $hasLevelCol ? ', i.has_level' : '';
+        $levelConversionSelect = $hasLevelConversionCol ? ', i.level_conversion' : ', i.unit_conversion AS level_conversion';
+        $calculationModeSelect = $hasCalculationModeCol ? ', i.calculation_mode' : ", 'combined' AS calculation_mode";
+
+        // Get recent updates with critical-first priority then newest updates
+        $stmt = $pdo->query(
+            "SELECT i.id, i.name, i.category, i.field_stock, i.unit_conversion{$levelConversionSelect}{$calculationModeSelect}, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.last_updated, u.username AS updated_by_name{$levelSelect}
+             FROM items i
+             LEFT JOIN users u ON i.updated_by = u.id
+                WHERE " . activeItemsWhereSql('i') . "
+             ORDER BY
+                CASE
+                    WHEN i.status = 'out-stock' THEN 1
+                    WHEN i.status IN ('low-stock', 'warning-stock') THEN 2
+                    WHEN i.status = 'in-stock' THEN 3
+                    ELSE 4
+                END,
+                COALESCE(i.last_updated, '1970-01-01 00:00:00') DESC,
+                i.id DESC
+             LIMIT 12"
+        );
+        $recentUpdates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!is_array($recentUpdates)) {
+            $recentUpdates = [];
+        }
+
+        $_SESSION[$dashboardCacheKey] = [
+            'cached_at' => $nowTs,
+            'inStock' => $inStock,
+            'lowStock' => $lowStock,
+            'outStock' => $outStock,
+            'recentUpdates' => $recentUpdates,
+        ];
+    } catch (Exception $e) {
+        // On DB error, fallback to zero counts and empty recent updates
+        $inStock = $lowStock = $outStock = 0;
         $recentUpdates = [];
     }
-} catch (Exception $e) {
-    // On DB error, fallback to zero counts and empty recent updates
-    $inStock = $lowStock = $outStock = 0;
-    $recentUpdates = [];
 }
 
 $totalItems = max(0, $inStock + $lowStock + $outStock);
@@ -101,6 +151,13 @@ $formatDelta = static function ($value) {
 $formatPercent = static function ($value) {
     return number_format($value, 1) . '%';
 };
+
+$statusIcons = [
+    'in-stock' => 'bx-check-circle',
+    'low-stock' => 'bx-error',
+    'warning-stock' => 'bx-error-alt',
+    'out-stock' => 'bx-x-circle',
+];
 ?>
 
 <!DOCTYPE html>
@@ -114,6 +171,10 @@ $formatPercent = static function ($value) {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+
+    <script>
+        document.documentElement.classList.add('dashboard-loading');
+    </script>
 
     <title>StockManager</title>
     <!-- CSS -->
@@ -248,7 +309,7 @@ $formatPercent = static function ($value) {
                 </div>
             </div>
             <!-- Add data-labels for mobile -->
-            <table>
+            <table class="dashboard-operational-table">
                 <thead>
                     <tr>
                         <th>Prioritas</th>
@@ -283,7 +344,8 @@ $formatPercent = static function ($value) {
                         // Determine if item uses level-based calculation
                         $hasLevel = isset($item['has_level']) ? (bool)$item['has_level'] : false;
                         $isCritical = in_array($status, ['low-stock', 'warning-stock', 'out-stock'], true);
-                        $priorityLabel = ($status === 'out-stock') ? 'P1' : (($isCritical) ? 'P2' : 'P3');
+                        $priorityLabel = ($status === 'out-stock') ? 'P1 Kritis' : (($isCritical) ? 'P2 Kritis' : 'P3 Normal');
+                        $statusIcon = isset($statusIcons[$status]) ? $statusIcons[$status] : 'bx-info-circle';
 
                         $isDefaultVisible = false;
                         if ($criticalCount > 0) {
@@ -325,6 +387,7 @@ $formatPercent = static function ($value) {
                             <td data-label="Ketahanan di lapangan"><?php echo number_format((int)$daysCoverage); ?> Hari</td>
                             <td data-label="Status">
                                 <span class="status <?php echo htmlspecialchars($status); ?>">
+                                    <i class='bx <?php echo htmlspecialchars($statusIcon); ?>' aria-hidden="true"></i>
                                     <?php echo translateStatus($status, 'id'); ?>
                                 </span>
                             </td>

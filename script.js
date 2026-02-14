@@ -10,6 +10,12 @@ if (navBar && menuBtns.length > 0) {
 	});
 }
 
+document.addEventListener("DOMContentLoaded", function () {
+	requestAnimationFrame(function () {
+		document.documentElement.classList.remove("dashboard-loading");
+	});
+});
+
 // Category filter for update-stock page (top-level, not nested)
 document.addEventListener("DOMContentLoaded", function () {
 	const filter = document.getElementById("category-filter");

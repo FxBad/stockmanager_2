@@ -769,6 +769,10 @@ tbody tr:hover {
 	z-index: 1;
 }
 
+.card {
+	min-height: 120px;
+}
+
 .kpi-achievement,
 .kpi-delta {
 	padding: 4px 8px;
@@ -826,12 +830,16 @@ tbody tr:hover {
 
 .exception-link {
 	padding: 8px 12px;
+	min-height: 44px;
 	border-radius: 8px;
 	background: #b91c1c;
 	color: #fff;
 	text-decoration: none;
 	font-size: 12px;
 	font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .exception-link.ghost {
@@ -846,7 +854,7 @@ tbody tr:hover {
 }
 
 .detail-toggle-btn {
-	height: 36px;
+	height: 44px;
 	padding: 0 12px;
 	border: 1px solid #ccd5cd;
 	background: #fff;
@@ -1008,7 +1016,7 @@ tbody tr:hover {
 }
 
 #dashboard-item-search {
-	height: 36px;
+	height: 44px;
 	border-radius: 8px;
 	border: 1px solid #d5ddd6;
 	padding: 0 12px;
@@ -1029,7 +1037,7 @@ tbody tr:hover {
 }
 
 .dashboard-filter-buttons button {
-	height: 36px;
+	height: 44px;
 	border: none;
 	padding: 0 12px;
 	background: #fff;
@@ -1055,12 +1063,12 @@ tbody tr:hover {
 .priority-badge {
 	padding: 4px 8px;
 	border-radius: 999px;
-	font-size: 12px;
+	font-size: 11px;
 	font-weight: 600;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 40px;
+	min-width: 72px;
 }
 
 .priority-badge.critical {
@@ -1081,13 +1089,126 @@ tbody tr:hover {
 }
 
 .action-link {
-	padding: 6px 10px;
+	padding: 6px 12px;
+	min-height: 44px;
 	border-radius: 6px;
 	text-decoration: none;
 	font-size: 12px;
 	font-weight: 600;
 	background: var(--hunter-green);
 	color: #fff;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+}
+
+/* Dashboard skeleton loading */
+.dashboard-loading .card h3,
+.dashboard-loading .card .kpi-meta,
+.dashboard-loading .exception-copy p,
+.dashboard-loading .trend-value,
+.dashboard-loading .trend-bar,
+.dashboard-loading .table-container tbody tr {
+	color: transparent !important;
+	position: relative;
+	overflow: hidden;
+}
+
+.dashboard-loading .card h3::after,
+.dashboard-loading .card .kpi-meta::after,
+.dashboard-loading .exception-copy p::after,
+.dashboard-loading .trend-value::after,
+.dashboard-loading .trend-bar::after,
+.dashboard-loading .table-container tbody tr::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(90deg, #edf1ed 25%, #f7faf7 50%, #edf1ed 75%);
+	background-size: 200% 100%;
+	animation: dashboardShimmer 1.1s linear infinite;
+	border-radius: 6px;
+}
+
+.dashboard-loading .table-container tbody tr::after {
+	border-radius: 8px;
+}
+
+@keyframes dashboardShimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}
+
+@media screen and (max-width: 768px) {
+	.card-container {
+		grid-template-columns: 1fr;
+	}
+
+	.table-container .dashboard-operational-table,
+	.table-container .dashboard-operational-table thead,
+	.table-container .dashboard-operational-table tbody,
+	.table-container .dashboard-operational-table th,
+	.table-container .dashboard-operational-table td,
+	.table-container .dashboard-operational-table tr {
+		display: block;
+	}
+
+	.table-container .dashboard-operational-table thead tr {
+		display: none;
+	}
+
+	.table-container .dashboard-operational-table tbody tr {
+		margin-bottom: 12px;
+		border: 1px solid #d7dfd8;
+		border-radius: 10px;
+		background: #fff;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+	}
+
+	.table-container .dashboard-operational-table td {
+		border: none;
+		border-bottom: 1px solid #eef2ee;
+		position: relative;
+		padding: 12px 12px 12px 50% !important;
+		text-align: right;
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.table-container .dashboard-operational-table td:last-child {
+		border-bottom: none;
+	}
+
+	.table-container .dashboard-operational-table td::before {
+		content: attr(data-label);
+		position: absolute;
+		left: 12px;
+		width: 45%;
+		padding-right: 8px;
+		text-align: left;
+		font-size: 12px;
+		font-weight: 700;
+		color: #25372d;
+		text-transform: none;
+	}
+
+	.table-container .dashboard-operational-table .actions-cell {
+		display: flex;
+		justify-content: flex-end;
+		gap: 8px;
+	}
 }
 
 .action-link.ghost {
@@ -1129,7 +1250,7 @@ tbody tr:hover {
 
 	.detail-toggle-btn {
 		width: 100%;
-		height: 42px;
+		height: 44px;
 	}
 
 	.trend-section {
@@ -1164,7 +1285,7 @@ tbody tr:hover {
 	#dashboard-item-search {
 		width: 100%;
 		min-width: 0;
-		height: 42px;
+		height: 44px;
 	}
 
 	.dashboard-filter-buttons {
@@ -1173,7 +1294,7 @@ tbody tr:hover {
 
 	.dashboard-filter-buttons button {
 		flex: 1;
-		height: 42px;
+		height: 44px;
 	}
 
 	.actions-cell {
