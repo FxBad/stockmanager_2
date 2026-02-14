@@ -233,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 array_splice($histValues, 15, 0, ':level');
             }
 
-            $histSql = 'INSERT INTO item_stock_history\n            (' . implode(', ', $histColumns) . ')\n            VALUES\n            (' . implode(', ', $histValues) . ')';
+            $histSql = 'INSERT INTO item_stock_history (' . implode(', ', $histColumns) . ') VALUES (' . implode(', ', $histValues) . ')';
 
             $histStmt = $pdo->prepare($histSql);
             $histParams = [
