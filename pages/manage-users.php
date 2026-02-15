@@ -13,11 +13,6 @@ require_once __DIR__ . '/../config/database.php';
 
 $message = '';
 $allowedRoles = ['field', 'office', 'admin'];
-$roleScopes = [
-    'field' => ['Input Data'],
-    'office' => ['Inventaris', 'Pelaporan'],
-    'admin' => ['Inventaris', 'Pelaporan', 'Input Data', 'Manajemen Pengguna'],
-];
 $modalToOpen = '';
 $addUserState = [
     'username' => '',
@@ -36,22 +31,6 @@ $editUserState = [
 function buildAlert($type, $text)
 {
     return '<div class="alert ' . $type . '">' . htmlspecialchars($text) . '</div>';
-}
-
-function getRoleScopeClass($scope)
-{
-    $normalized = strtolower(trim((string)$scope));
-    if ($normalized === 'inventaris') {
-        return 'scope-inventory';
-    }
-    if ($normalized === 'pelaporan') {
-        return 'scope-report';
-    }
-    if ($normalized === 'input data') {
-        return 'scope-input';
-    }
-
-    return 'scope-admin';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -354,53 +333,6 @@ try {
         .user-modal-body {
             padding: 16px;
         }
-
-        .role-cell {
-            min-width: 220px;
-        }
-
-        .role-scope-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 6px;
-        }
-
-        .scope-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            border: 1px solid transparent;
-            white-space: nowrap;
-        }
-
-        .scope-chip.scope-inventory {
-            background-color: #eef7f2;
-            color: #1f6d50;
-            border-color: #cde7da;
-        }
-
-        .scope-chip.scope-report {
-            background-color: #eff3fb;
-            color: #1f4f87;
-            border-color: #d0def5;
-        }
-
-        .scope-chip.scope-input {
-            background-color: #fff6e9;
-            color: #8a5a15;
-            border-color: #f2dfbf;
-        }
-
-        .scope-chip.scope-admin {
-            background-color: #f8eefc;
-            color: #6d2f91;
-            border-color: #e6d3f2;
-        }
     </style>
 </head>
 
@@ -446,7 +378,6 @@ try {
                         $fullName = isset($user['full_name']) ? htmlspecialchars($user['full_name']) : '';
                         $email = isset($user['email']) ? htmlspecialchars($user['email']) : '';
                         $role = isset($user['role']) ? preg_replace('/[^a-z0-9_\-]/i', '', $user['role']) : 'user';
-                        $roleScopeItems = isset($roleScopes[$role]) ? $roleScopes[$role] : ['Akses Dasar'];
                         $status = isset($user['status']) ? preg_replace('/[^a-z0-9_\-]/i', '', $user['status']) : 'inactive';
                         $lastLogin = !empty($user['last_login']) ? htmlspecialchars($user['last_login']) : '';
                     ?>
@@ -454,15 +385,7 @@ try {
                             <td><?php echo $username; ?></td>
                             <td><?php echo $fullName; ?></td>
                             <td><?php echo $email; ?></td>
-                            <td class="role-cell">
-                                <span class="role <?php echo $role; ?>"><?php echo ucfirst($role); ?></span>
-                                <div class="role-scope-list" aria-label="Cakupan akses role <?php echo htmlspecialchars(ucfirst($role)); ?>">
-                                    <?php foreach ($roleScopeItems as $scopeItem): ?>
-                                        <?php $scopeClass = getRoleScopeClass($scopeItem); ?>
-                                        <span class="scope-chip <?php echo $scopeClass; ?>"><?php echo htmlspecialchars($scopeItem); ?></span>
-                                    <?php endforeach; ?>
-                                </div>
-                            </td>
+                            <td><span class="role <?php echo $role; ?>"><?php echo ucfirst($role); ?></span></td>
                             <td>
                                 <span class="status <?php echo $status; ?>">
                                     <?php echo ucfirst($status); ?>
