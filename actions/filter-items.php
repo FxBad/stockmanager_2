@@ -103,6 +103,7 @@ try {
             $unitConversion = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1;
             $levelConversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unitConversion;
             $dailyConsumption = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0;
+            $minDaysCoverage = isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1;
             $level = array_key_exists('level', $item) ? $item['level'] : null;
             $calculationMode = isset($item['calculation_mode']) ? (string)$item['calculation_mode'] : 'combined';
             $itemStatus = isset($item['status']) ? (string)$item['status'] : '';
@@ -119,12 +120,14 @@ try {
                 [
                     'item_id' => $id,
                     'category' => $itemCategory,
-                    'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
+                    'min_days_coverage' => $minDaysCoverage,
                     'level_conversion' => $levelConversion,
                     'qty_conversion' => $unitConversion,
                     'calculation_mode' => $calculationMode
                 ]
             );
+
+            $coverageClass = ((float)$daysCoverage < (float)$minDaysCoverage) ? ' coverage-risk' : '';
 
             $effectiveStock = calculateEffectiveStock($fieldStock, $unitConversion, $level, $hasLevel, [
                 'level_conversion' => $levelConversion,
@@ -136,7 +139,7 @@ try {
                 'item_id' => $id,
                 'category' => $itemCategory,
                 'effective_stock' => $effectiveStock,
-                'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
+                'min_days_coverage' => $minDaysCoverage
             ]);
 
             if ($context === 'manage') {
@@ -147,7 +150,7 @@ try {
                     <td data-label="Stok" class="numeric-col"><?php echo number_format((int)$fieldStock); ?></td>
                     <td data-label="Pemakaian Harian" class="numeric-col"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
                     <td data-label="Level (cm)" class="numeric-col"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
-                    <td data-label="Katahanan" class="numeric-col"><?php echo number_format((int)$daysCoverage); ?> hari</td>
+                    <td data-label="Katahanan" class="numeric-col<?php echo $coverageClass; ?>"><?php echo number_format((int)$daysCoverage); ?> hari</td>
                     <td data-label="Status"><span class="status <?php echo htmlspecialchars($itemStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?></span></td>
                     <td data-label="Terakhir Diperbarui" class="last-login">
                         <?php if (!empty($item['last_updated'])): ?>
@@ -188,7 +191,7 @@ try {
                         <td data-label="Pemakaian Harian" class="numeric-col"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
                     <?php endif; ?>
                     <td data-label="Level (cm)" class="numeric-col"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
-                    <td data-label="Ketahanan di lapangan" class="numeric-col"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
+                    <td data-label="Ketahanan di lapangan" class="numeric-col<?php echo $coverageClass; ?>"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
                     <td data-label="Status">
                         <span class="status <?php echo htmlspecialchars($itemStatus, ENT_QUOTES, 'UTF-8'); ?>">
                             <?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?>

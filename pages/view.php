@@ -223,6 +223,7 @@ $colspan = $colCount;
                             $unit_conversion = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1;
                             $level_conversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unit_conversion;
                             $daily_consumption = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0;
+                            $min_days_coverage = isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1;
                             $level = array_key_exists('level', $item) ? $item['level'] : null;
                             $calculation_mode = isset($item['calculation_mode']) ? (string)$item['calculation_mode'] : 'combined';
                             $status = isset($item['status']) ? (string)$item['status'] : '';
@@ -245,18 +246,20 @@ $colspan = $colCount;
                                 [
                                     'item_id' => isset($item['id']) ? (int)$item['id'] : 0,
                                     'category' => $category,
-                                    'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
+                                    'min_days_coverage' => $min_days_coverage,
                                     'level_conversion' => $level_conversion,
                                     'qty_conversion' => $unit_conversion,
                                     'calculation_mode' => $calculation_mode
                                 ]
                             );
 
+                            $coverageClass = ((float)$daysCoverage < (float)$min_days_coverage) ? ' coverage-risk' : '';
+
                             $resolvedDaily = resolveDailyConsumption($daily_consumption, [
                                 'item_id' => isset($item['id']) ? (int)$item['id'] : 0,
                                 'category' => $category,
                                 'effective_stock' => $totalStock,
-                                'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
+                                'min_days_coverage' => $min_days_coverage
                             ]);
                         ?>
                             <tr>
@@ -267,7 +270,7 @@ $colspan = $colCount;
                                     <td data-label="Pemakaian Harian" class="numeric-col"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
                                 <?php endif; ?>
                                 <td data-label="Level (cm)" class="numeric-col"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
-                                <td data-label="Ketahanan di lapangan" class="numeric-col"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
+                                <td data-label="Ketahanan di lapangan" class="numeric-col<?php echo $coverageClass; ?>"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
                                 <td data-label="Status">
                                     <span class="status <?php echo htmlspecialchars($status); ?>">
                                         <?php echo translateStatus($status, 'id'); ?>

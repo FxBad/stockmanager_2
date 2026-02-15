@@ -584,6 +584,12 @@ nav.open ~ .main-container {
 	font-feature-settings: "tnum" 1;
 }
 
+.table-container td.coverage-risk {
+	font-weight: 700;
+	color: #ef4444;
+	background: #fde8e8;
+}
+
 /* Keep td as table-cell (not flex) */
 td.actions {
 	display: table-cell !important;

@@ -239,3 +239,42 @@
 [Sun Feb 15 11:24:52 2026] [::1]:55763 Accepted
 [Sun Feb 15 11:24:52 2026] [::1]:55763 [404]: GET /favicon.ico - No such file or directory
 [Sun Feb 15 11:24:52 2026] [::1]:55763 Closing
+[Sun Feb 15 11:27:58 2026] [::1]:53134 Accepted
+[Sun Feb 15 11:27:58 2026] [::1]:53134 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sun Feb 15 11:27:58 2026] [::1]:53134 Closing
+[Sun Feb 15 11:27:58 2026] [::1]:51924 Accepted
+[Sun Feb 15 11:27:58 2026] [::1]:51924 [200]: GET /
+[Sun Feb 15 11:27:58 2026] [::1]:51924 Closing
+[Sun Feb 15 11:27:58 2026] [::1]:57697 Accepted
+[Sun Feb 15 11:27:58 2026] [::1]:57697 [200]: GET /style.css?v=1771129678
+[Sun Feb 15 11:27:58 2026] [::1]:57697 Closing
+[Sun Feb 15 11:27:58 2026] [::1]:57698 Accepted
+[Sun Feb 15 11:27:58 2026] [::1]:57698 [200]: GET /script.js?v=1771129678
+[Sun Feb 15 11:27:58 2026] [::1]:57698 Closing
+[Sun Feb 15 11:27:59 2026] [::1]:49898 Accepted
+[Sun Feb 15 11:27:59 2026] [::1]:49898 [404]: GET /transition.js - No such file or directory
+[Sun Feb 15 11:27:59 2026] [::1]:49898 Closing
+[Sun Feb 15 11:28:04 2026] [::1]:56942 Accepted
+[Sun Feb 15 11:28:05 2026] [::1]:56942 [200]: GET /view.php
+[Sun Feb 15 11:28:05 2026] [::1]:56942 Closing
+[Sun Feb 15 11:28:05 2026] [::1]:58929 Accepted
+[Sun Feb 15 11:28:05 2026] [::1]:58929 [200]: GET /style.css?v=1771129685
+[Sun Feb 15 11:28:05 2026] [::1]:58929 Closing
+[Sun Feb 15 11:28:05 2026] [::1]:58930 Accepted
+[Sun Feb 15 11:28:05 2026] [::1]:58930 [200]: GET /script.js?v=1771129685
+[Sun Feb 15 11:28:05 2026] [::1]:58930 Closing
+[Sun Feb 15 11:31:09 2026] [::1]:57191 Accepted
+[Sun Feb 15 11:31:09 2026] [::1]:57191 [200]: GET /view.php
+[Sun Feb 15 11:31:09 2026] [::1]:57191 Closing
+[Sun Feb 15 11:31:09 2026] [::1]:63624 Accepted
+[Sun Feb 15 11:31:09 2026] [::1]:63624 [200]: GET /style.css?v=1771129869
+[Sun Feb 15 11:31:09 2026] [::1]:63624 Closing
+[Sun Feb 15 11:31:09 2026] [::1]:63625 Accepted
+[Sun Feb 15 11:31:09 2026] [::1]:63625 [200]: GET /script.js?v=1771129869
+[Sun Feb 15 11:31:09 2026] [::1]:63625 Closing
+[Sun Feb 15 11:32:38 2026] [::1]:62969 Accepted
+[Sun Feb 15 11:32:38 2026] [::1]:62969 [200]: GET /style.css?v=1771129869
+[Sun Feb 15 11:32:38 2026] [::1]:62969 Closing
+[Sun Feb 15 11:32:38 2026] [::1]:55202 Accepted
+[Sun Feb 15 11:32:38 2026] [::1]:55202 [404]: GET /.well-known/appspecific/com.chrome.devtools.json - No such file or directory
+[Sun Feb 15 11:32:38 2026] [::1]:55202 Closing
