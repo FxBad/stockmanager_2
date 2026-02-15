@@ -1329,6 +1329,11 @@ document.addEventListener("DOMContentLoaded", function () {
 	const autocompleteList = document.getElementById("autocomplete-list");
 	const clearButton = document.getElementById("search-clear-btn");
 	const filterForm = searchInput ? searchInput.closest("form") : null;
+	const isServerGrid =
+		filterForm && filterForm.dataset.serverGrid === "1";
+	const pageInput = filterForm
+		? filterForm.querySelector('input[name="page"]')
+		: null;
 	const resetFilterButton = filterForm
 		? filterForm.querySelector("#reset-filter-btn")
 		: null;
@@ -1508,10 +1513,18 @@ document.addEventListener("DOMContentLoaded", function () {
 		if (statusFilter) {
 			statusFilter.value = "";
 		}
+		if (pageInput) {
+			pageInput.value = "1";
+		}
 
 		hideAutocomplete();
 		toggleClearButton();
 		renderActiveFilterChips();
+		if (isServerGrid) {
+			filterForm.submit();
+			return;
+		}
+
 		updateTableRows();
 		searchInput.focus();
 	}
@@ -1574,7 +1587,16 @@ document.addEventListener("DOMContentLoaded", function () {
 					statusFilter.value = "";
 				}
 
+				if (pageInput) {
+					pageInput.value = "1";
+				}
+
 				renderActiveFilterChips();
+				if (isServerGrid) {
+					filterForm.submit();
+					return;
+				}
+
 				updateTableRows();
 			});
 			activeFilterChips.appendChild(chipEl);
@@ -1637,7 +1659,15 @@ document.addEventListener("DOMContentLoaded", function () {
 		searchInput.value = value;
 		hideAutocomplete();
 		toggleClearButton();
+		if (pageInput) {
+			pageInput.value = "1";
+		}
 		renderActiveFilterChips();
+		if (isServerGrid) {
+			filterForm.submit();
+			return;
+		}
+
 		updateTableRows();
 		// Optionally submit the form automatically
 		// searchInput.closest('form').submit();
@@ -1694,20 +1724,41 @@ document.addEventListener("DOMContentLoaded", function () {
 	);
 
 	searchInput.addEventListener("input", function () {
+		if (pageInput) {
+			pageInput.value = "1";
+		}
 		renderActiveFilterChips();
+		if (isServerGrid) {
+			return;
+		}
+
 		updateTableRows();
 	});
 
 	if (categoryFilter) {
 		categoryFilter.addEventListener("change", function () {
+			if (pageInput) {
+				pageInput.value = "1";
+			}
 			renderActiveFilterChips();
+			if (isServerGrid) {
+				return;
+			}
+
 			updateTableRows();
 		});
 	}
 
 	if (statusFilter) {
 		statusFilter.addEventListener("change", function () {
+			if (pageInput) {
+				pageInput.value = "1";
+			}
 			renderActiveFilterChips();
+			if (isServerGrid) {
+				return;
+			}
+
 			updateTableRows();
 		});
 	}
@@ -1729,6 +1780,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	// Keep filtering in live-update mode (avoid full page reload on submit/Enter)
 	searchInput.closest("form").addEventListener("submit", function (e) {
+		if (pageInput) {
+			pageInput.value = "1";
+		}
+
+		if (isServerGrid) {
+			return;
+		}
+
 		e.preventDefault();
 
 		if (autocompleteList.classList.contains("show")) {
@@ -1743,9 +1802,17 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (clearButton) {
 		clearButton.addEventListener("click", function () {
 			searchInput.value = "";
+			if (pageInput) {
+				pageInput.value = "1";
+			}
 			hideAutocomplete();
 			toggleClearButton();
 			renderActiveFilterChips();
+			if (isServerGrid) {
+				filterForm.submit();
+				return;
+			}
+
 			updateTableRows();
 			searchInput.focus();
 		});
@@ -1767,5 +1834,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	toggleClearButton();
 	renderActiveFilterChips();
-	updateResultCount();
+	if (!isServerGrid) {
+		updateResultCount();
+	}
 });

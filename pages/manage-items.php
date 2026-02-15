@@ -144,6 +144,17 @@ $category = isset($_GET['category']) ? trim((string)$_GET['category']) : '';
 $status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
 $search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 
+$allowedPerPage = [10, 25, 50, 100];
+$perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 25;
+if (!in_array($perPage, $allowedPerPage, true)) {
+    $perPage = 25;
+}
+
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) {
+    $page = 1;
+}
+
 // Get sort parameter (default to 'last_updated' if not specified)
 $sortBy = isset($_GET['sort']) ? $_GET['sort'] : 'last_updated';
 $sortDir = isset($_GET['dir']) && $_GET['dir'] === 'asc' ? 'ASC' : 'DESC';
@@ -163,21 +174,47 @@ $query = "SELECT
         LEFT JOIN users u ON i.added_by = u.id
         LEFT JOIN users u2 ON i.updated_by = u2.id
     WHERE " . activeItemsWhereSql('i');
+$countQuery = "SELECT COUNT(*)
+    FROM items i
+    WHERE " . activeItemsWhereSql('i');
 $params = [];
 
 if ($category) {
     $query .= " AND i.category = ?";
+    $countQuery .= " AND i.category = ?";
     $params[] = $category;
 }
 
 if ($status) {
     $query .= " AND i.status = ?";
+    $countQuery .= " AND i.status = ?";
     $params[] = $status;
 }
 
 if ($search) {
     $query .= " AND i.name LIKE ?";
+    $countQuery .= " AND i.name LIKE ?";
     $params[] = "%$search%";
+}
+
+$totalItems = 0;
+$totalPages = 1;
+$offset = 0;
+
+try {
+    $countStmt = $pdo->prepare($countQuery);
+    $countStmt->execute($params);
+    $totalItems = (int)$countStmt->fetchColumn();
+
+    $totalPages = max(1, (int)ceil($totalItems / $perPage));
+    if ($page > $totalPages) {
+        $page = $totalPages;
+    }
+    $offset = ($page - 1) * $perPage;
+} catch (Exception $e) {
+    $items = [];
+    $categories = $itemCategories;
+    $message = '<div class="alert error">DB error: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
 
 // PRIMARY SORT
@@ -187,6 +224,34 @@ $query .= " ORDER BY i.{$sortBy} {$sortDir}";
 if ($sortBy !== 'name' && $sortBy !== 'last_updated') {
     $query .= ", i.name ASC";
 }
+
+$query .= " LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
+
+$baseQueryParams = [
+    'search' => $search,
+    'category' => $category,
+    'status' => $status,
+    'sort' => $sortBy,
+    'dir' => strtolower($sortDir),
+    'per_page' => $perPage,
+];
+
+$buildQuery = function (array $overrides = []) use ($baseQueryParams): string {
+    $next = array_merge($baseQueryParams, $overrides);
+
+    foreach (['search', 'category', 'status'] as $optionalKey) {
+        if (!isset($next[$optionalKey]) || $next[$optionalKey] === '') {
+            unset($next[$optionalKey]);
+        }
+    }
+
+    if (isset($next['page']) && (int)$next['page'] <= 1) {
+        unset($next['page']);
+    }
+
+    $queryString = http_build_query($next);
+    return $queryString ? ('?' . $queryString) : '';
+};
 
 // Execute query with error handling
 try {
@@ -237,7 +302,7 @@ try {
 
         <div class="table-container">
             <div class="table-header">
-                <form method="GET" class="table-filters" data-filter-context="manage" data-default-sort="last_updated" data-default-dir="desc">
+                <form method="GET" class="table-filters" data-filter-context="manage" data-default-sort="last_updated" data-default-dir="desc" data-server-grid="1">
                     <div class="search-box">
                         <i class='bx bx-search'></i>
                         <input type="text" name="search" id="search-input" placeholder="Cari barang..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
@@ -245,6 +310,9 @@ try {
                         <div id="autocomplete-list" class="autocomplete-items"></div>
                     </div>
                     <div class="filter-group">
+                        <input type="hidden" name="sort" value="<?php echo htmlspecialchars((string)$sortBy); ?>">
+                        <input type="hidden" name="dir" value="<?php echo strtolower((string)$sortDir); ?>">
+                        <input type="hidden" name="page" id="filter-page-input" value="1">
                         <select name="category">
                             <option value="">Semua Kategori</option>
                             <?php foreach ($categories as $cat): ?>
@@ -260,6 +328,11 @@ try {
                             <option value="warning-stock" <?php echo $status === 'warning-stock' ? 'selected' : ''; ?>><?php echo translateStatus('warning-stock', 'id'); ?></option>
                             <option value="out-stock" <?php echo $status === 'out-stock' ? 'selected' : ''; ?>><?php echo translateStatus('out-stock', 'id'); ?></option>
                         </select>
+                        <select name="per_page" aria-label="Jumlah data per halaman">
+                            <?php foreach ($allowedPerPage as $size): ?>
+                                <option value="<?php echo $size; ?>" <?php echo $perPage === $size ? 'selected' : ''; ?>><?php echo $size; ?> / halaman</option>
+                            <?php endforeach; ?>
+                        </select>
                         <button type="submit" class="btn-filter">Terapkan Filter</button>
                     </div>
                 </form>
@@ -269,7 +342,11 @@ try {
                 <thead>
                     <tr>
                         <th>
-                            <a href="?search=<?= urlencode($search) ?>&category=<?= urlencode($category) ?>&status=<?= urlencode($status) ?>&sort=name&dir=<?= ($sortBy === 'name' && $sortDir === 'DESC') ? 'asc' : 'desc' ?>" class="th-sort">
+                            <a href="<?php echo htmlspecialchars($buildQuery([
+                                'sort' => 'name',
+                                'dir' => ($sortBy === 'name' && $sortDir === 'DESC') ? 'asc' : 'desc',
+                                'page' => 1
+                            ])); ?>" class="th-sort">
                                 Nama Barang
                                 <?php if ($sortBy === 'name'): ?>
                                     <i class='bx bx-<?= $sortDir === 'ASC' ? 'up' : 'down' ?>-arrow-alt'></i>
@@ -279,7 +356,11 @@ try {
                             </a>
                         </th>
                         <th>
-                            <a href="?search=<?= urlencode($search) ?>&category=<?= urlencode($category) ?>&status=<?= urlencode($status) ?>&sort=category&dir=<?= ($sortBy === 'category' && $sortDir === 'DESC') ? 'asc' : 'desc' ?>" class="th-sort">
+                            <a href="<?php echo htmlspecialchars($buildQuery([
+                                'sort' => 'category',
+                                'dir' => ($sortBy === 'category' && $sortDir === 'DESC') ? 'asc' : 'desc',
+                                'page' => 1
+                            ])); ?>" class="th-sort">
                                 Kategori
                                 <?php if ($sortBy === 'category'): ?>
                                     <i class='bx bx-<?= $sortDir === 'ASC' ? 'up' : 'down' ?>-arrow-alt'></i>
@@ -302,7 +383,7 @@ try {
                         // Normalize fields
                         $id = isset($item['id']) ? (int)$item['id'] : 0;
                         $name = isset($item['name']) ? (string)$item['name'] : '';
-                        $category = isset($item['category']) ? (string)$item['category'] : '';
+                        $itemCategory = isset($item['category']) ? (string)$item['category'] : '';
                         $field_stock = isset($item['field_stock']) ? (float)$item['field_stock'] : 0;
                         $unit_conversion = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1;
                         $daily_consumption = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0;
@@ -322,7 +403,7 @@ try {
                             $hasLevel,
                             [
                                 'item_id' => $id,
-                                'category' => $category,
+                                'category' => $itemCategory,
                                 'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
                                 'level_conversion' => $level_conversion,
                                 'qty_conversion' => $unit_conversion,
@@ -338,14 +419,14 @@ try {
 
                         $resolvedDaily = resolveDailyConsumption($daily_consumption, [
                             'item_id' => $id,
-                            'category' => $category,
+                            'category' => $itemCategory,
                             'effective_stock' => $effectiveStock,
                             'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
                         ]);
                     ?>
                         <tr data-item-id="<?php echo $id; ?>">
                             <td data-label="Nama Barang"><?php echo htmlspecialchars($name); ?></td>
-                            <td data-label="Kategori"><?php echo htmlspecialchars($category); ?></td>
+                            <td data-label="Kategori"><?php echo htmlspecialchars($itemCategory); ?></td>
                             <td data-label="Stok"><?php echo number_format((int)$field_stock); ?></td>
                             <td data-label="Pemakaian Harian"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
                             <td data-label="Level (cm)"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
@@ -403,6 +484,24 @@ try {
                     <?php endif; ?>
                 </tbody>
             </table>
+
+            <div class="table-pagination" aria-label="Navigasi halaman">
+                <?php if ($page > 1): ?>
+                    <a class="btn-page" href="<?php echo htmlspecialchars($buildQuery(['page' => $page - 1])); ?>" aria-label="Halaman sebelumnya">&laquo; Sebelumnya</a>
+                <?php endif; ?>
+
+                <?php
+                $startPage = max(1, $page - 2);
+                $endPage = min($totalPages, $page + 2);
+                for ($pageNumber = $startPage; $pageNumber <= $endPage; $pageNumber++):
+                ?>
+                    <a class="btn-page <?php echo $pageNumber === $page ? 'active' : ''; ?>" href="<?php echo htmlspecialchars($buildQuery(['page' => $pageNumber])); ?>"><?php echo $pageNumber; ?></a>
+                <?php endfor; ?>
+
+                <?php if ($page < $totalPages): ?>
+                    <a class="btn-page" href="<?php echo htmlspecialchars($buildQuery(['page' => $page + 1])); ?>" aria-label="Halaman berikutnya">Berikutnya &raquo;</a>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="app-modal-overlay" id="add-item-modal" onclick="closeItemModalOnBackdrop(event, 'add-item-modal')">
