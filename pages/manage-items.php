@@ -107,6 +107,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $message = '<div class="alert error">Error: ' . htmlspecialchars((string)$result['message']) . '</div>';
             }
         }
+    } elseif ($action === 'bulk_manage_items') {
+        $selectedIdsRaw = $_POST['selected_item_ids'] ?? [];
+        if (!is_array($selectedIdsRaw)) {
+            $selectedIdsRaw = [];
+        }
+
+        $selectedIds = [];
+        foreach ($selectedIdsRaw as $rawId) {
+            $itemId = (int)$rawId;
+            if ($itemId > 0) {
+                $selectedIds[$itemId] = $itemId;
+            }
+        }
+        $selectedIds = array_values($selectedIds);
+
+        if (empty($selectedIds)) {
+            $message = '<div class="alert error">Pilih minimal satu barang untuk aksi massal.</div>';
+        } else {
+            $bulkAction = isset($_POST['bulk_action']) ? trim((string)$_POST['bulk_action']) : '';
+            $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
+
+            try {
+                $pdo->beginTransaction();
+
+                if ($bulkAction === 'update_status') {
+                    $bulkStatus = isset($_POST['bulk_status']) ? trim((string)$_POST['bulk_status']) : '';
+                    $validStatuses = ['in-stock', 'low-stock', 'warning-stock', 'out-stock'];
+                    if (!in_array($bulkStatus, $validStatuses, true)) {
+                        throw new Exception('Status massal tidak valid.');
+                    }
+
+                    $sql = "UPDATE items SET status = ?, updated_by = ?, last_updated = NOW() WHERE id IN ({$placeholders}) AND " . activeItemsWhereSql();
+                    $paramsBulk = array_merge([$bulkStatus, $_SESSION['user_id']], $selectedIds);
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($paramsBulk);
+                    $affected = (int)$stmt->rowCount();
+                    $message = '<div class="alert success">Status berhasil diperbarui untuk ' . $affected . ' barang.</div>';
+                } elseif ($bulkAction === 'update_category') {
+                    $bulkCategory = isset($_POST['bulk_category']) ? trim((string)$_POST['bulk_category']) : '';
+                    if ($bulkCategory === '' || !in_array($bulkCategory, $itemCategories, true)) {
+                        throw new Exception('Kategori massal tidak valid.');
+                    }
+
+                    $sql = "UPDATE items SET category = ?, updated_by = ?, last_updated = NOW() WHERE id IN ({$placeholders}) AND " . activeItemsWhereSql();
+                    $paramsBulk = array_merge([$bulkCategory, $_SESSION['user_id']], $selectedIds);
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($paramsBulk);
+                    $affected = (int)$stmt->rowCount();
+                    $message = '<div class="alert success">Kategori berhasil diperbarui untuk ' . $affected . ' barang.</div>';
+                } elseif ($bulkAction === 'archive') {
+                    if (!itemsSoftDeleteEnabled()) {
+                        throw new Exception('Soft-delete belum aktif. Jalankan migrasi database terlebih dahulu.');
+                    }
+
+                    if (db_has_column('items', 'deleted_by')) {
+                        $sql = "UPDATE items SET deleted_at = NOW(), deleted_by = ?, updated_by = ?, last_updated = NOW() WHERE id IN ({$placeholders}) AND " . activeItemsWhereSql();
+                        $paramsBulk = array_merge([$_SESSION['user_id'], $_SESSION['user_id']], $selectedIds);
+                    } else {
+                        $sql = "UPDATE items SET deleted_at = NOW(), updated_by = ?, last_updated = NOW() WHERE id IN ({$placeholders}) AND " . activeItemsWhereSql();
+                        $paramsBulk = array_merge([$_SESSION['user_id']], $selectedIds);
+                    }
+
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($paramsBulk);
+                    $affected = (int)$stmt->rowCount();
+                    $message = '<div class="alert success">Berhasil mengarsipkan ' . $affected . ' barang.</div>';
+                } else {
+                    throw new Exception('Aksi massal tidak dikenali.');
+                }
+
+                $pdo->commit();
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $message = '<div class="alert error">Aksi massal gagal: ' . htmlspecialchars($e->getMessage()) . '</div>';
+            }
+        }
     }
 }
 
@@ -341,6 +419,9 @@ try {
             <table>
                 <thead>
                     <tr>
+                        <th class="bulk-select-header">
+                            <input type="checkbox" id="select-all-items" aria-label="Pilih semua item di halaman ini">
+                        </th>
                         <th>
                             <a href="<?php echo htmlspecialchars($buildQuery([
                                             'sort' => 'name',
@@ -425,6 +506,9 @@ try {
                         ]);
                     ?>
                         <tr data-item-id="<?php echo $id; ?>">
+                            <td data-label="Pilih" class="bulk-select-cell">
+                                <input type="checkbox" class="bulk-item-checkbox" value="<?php echo $id; ?>" aria-label="Pilih <?php echo htmlspecialchars($name); ?>">
+                            </td>
                             <td data-label="Nama Barang"><?php echo htmlspecialchars($name); ?></td>
                             <td data-label="Kategori"><?php echo htmlspecialchars($itemCategory); ?></td>
                             <td data-label="Stok"><?php echo number_format((int)$field_stock); ?></td>
@@ -479,11 +563,46 @@ try {
                     <?php endforeach; ?>
                     <?php if (empty($items)): ?>
                         <tr>
-                            <td colspan="9" class="no-data">Tidak ada barang</td>
+                            <td colspan="10" class="no-data">Tidak ada barang</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
+
+            <div class="bulk-action-sticky" id="bulk-action-bar" hidden>
+                <form method="POST" id="bulk-action-form" class="bulk-action-form">
+                    <input type="hidden" name="action" value="bulk_manage_items">
+                    <div id="bulk-selected-inputs"></div>
+
+                    <div class="bulk-action-summary">
+                        <strong id="bulk-selected-count">0</strong> item dipilih
+                    </div>
+
+                    <div class="bulk-action-controls">
+                        <select id="bulk_action" name="bulk_action" aria-label="Pilih aksi massal">
+                            <option value="update_status">Ubah Status</option>
+                            <option value="update_category">Ubah Kategori</option>
+                            <option value="archive">Arsipkan</option>
+                        </select>
+
+                        <select id="bulk_status" name="bulk_status" aria-label="Pilih status massal">
+                            <option value="in-stock"><?php echo translateStatus('in-stock', 'id'); ?></option>
+                            <option value="low-stock"><?php echo translateStatus('low-stock', 'id'); ?></option>
+                            <option value="warning-stock"><?php echo translateStatus('warning-stock', 'id'); ?></option>
+                            <option value="out-stock"><?php echo translateStatus('out-stock', 'id'); ?></option>
+                        </select>
+
+                        <select id="bulk_category" name="bulk_category" aria-label="Pilih kategori massal" style="display:none;">
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?php echo htmlspecialchars($cat); ?>"><?php echo htmlspecialchars($cat); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <button type="submit" class="btn-filter" id="bulk-apply-btn">Terapkan</button>
+                        <button type="button" class="btn-page" id="bulk-clear-selection">Bersihkan Pilihan</button>
+                    </div>
+                </form>
+            </div>
 
             <div class="table-pagination" aria-label="Navigasi halaman">
                 <?php if ($page > 1): ?>
@@ -716,6 +835,154 @@ try {
                     modal.classList.add('show');
                 }
             }
+        })();
+
+        (function() {
+            const selectAll = document.getElementById('select-all-items');
+            const rowCheckboxes = Array.from(document.querySelectorAll('.bulk-item-checkbox'));
+            const bulkBar = document.getElementById('bulk-action-bar');
+            const selectedCountEl = document.getElementById('bulk-selected-count');
+            const selectedInputs = document.getElementById('bulk-selected-inputs');
+            const bulkAction = document.getElementById('bulk_action');
+            const bulkStatus = document.getElementById('bulk_status');
+            const bulkCategory = document.getElementById('bulk_category');
+            const bulkForm = document.getElementById('bulk-action-form');
+            const clearSelectionBtn = document.getElementById('bulk-clear-selection');
+
+            if (!bulkBar || !bulkForm || !selectedInputs) return;
+
+            function getSelectedIds() {
+                return rowCheckboxes
+                    .filter(function(checkbox) {
+                        return checkbox.checked;
+                    })
+                    .map(function(checkbox) {
+                        return checkbox.value;
+                    });
+            }
+
+            function syncHiddenInputs(selectedIds) {
+                selectedInputs.innerHTML = '';
+                selectedIds.forEach(function(id) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selected_item_ids[]';
+                    input.value = String(id);
+                    selectedInputs.appendChild(input);
+                });
+            }
+
+            function syncActionFields() {
+                const action = bulkAction ? bulkAction.value : 'update_status';
+                if (bulkStatus) {
+                    bulkStatus.style.display = action === 'update_status' ? 'inline-block' : 'none';
+                    bulkStatus.required = action === 'update_status';
+                }
+                if (bulkCategory) {
+                    bulkCategory.style.display = action === 'update_category' ? 'inline-block' : 'none';
+                    bulkCategory.required = action === 'update_category';
+                }
+            }
+
+            function syncBulkBar() {
+                const selectedIds = getSelectedIds();
+                const selectedCount = selectedIds.length;
+
+                if (selectedCountEl) {
+                    selectedCountEl.textContent = String(selectedCount);
+                }
+
+                syncHiddenInputs(selectedIds);
+
+                if (bulkBar) {
+                    bulkBar.hidden = selectedCount < 1;
+                }
+
+                if (selectAll) {
+                    if (selectedCount < 1) {
+                        selectAll.checked = false;
+                        selectAll.indeterminate = false;
+                    } else if (selectedCount === rowCheckboxes.length) {
+                        selectAll.checked = true;
+                        selectAll.indeterminate = false;
+                    } else {
+                        selectAll.checked = false;
+                        selectAll.indeterminate = true;
+                    }
+                }
+            }
+
+            function clearSelection() {
+                rowCheckboxes.forEach(function(checkbox) {
+                    checkbox.checked = false;
+                });
+                syncBulkBar();
+            }
+
+            rowCheckboxes.forEach(function(checkbox) {
+                checkbox.addEventListener('change', syncBulkBar);
+            });
+
+            if (selectAll) {
+                selectAll.addEventListener('change', function() {
+                    const shouldSelect = !!selectAll.checked;
+                    rowCheckboxes.forEach(function(checkbox) {
+                        checkbox.checked = shouldSelect;
+                    });
+                    syncBulkBar();
+                });
+            }
+
+            if (bulkAction) {
+                bulkAction.addEventListener('change', syncActionFields);
+            }
+
+            if (clearSelectionBtn) {
+                clearSelectionBtn.addEventListener('click', clearSelection);
+            }
+
+            bulkForm.addEventListener('submit', function(event) {
+                const selectedIds = getSelectedIds();
+                if (selectedIds.length < 1) {
+                    event.preventDefault();
+                    if (typeof showModal === 'function') {
+                        showModal({
+                            title: 'Info',
+                            message: 'Pilih minimal satu barang sebelum menjalankan aksi massal.',
+                            type: 'info',
+                            okText: 'OK'
+                        });
+                    }
+                    return;
+                }
+
+                syncHiddenInputs(selectedIds);
+                const currentAction = bulkAction ? bulkAction.value : '';
+                if (currentAction !== 'archive') {
+                    return;
+                }
+
+                event.preventDefault();
+                if (typeof showModal === 'function') {
+                    showModal({
+                        title: 'Konfirmasi',
+                        message: 'Arsipkan semua item yang dipilih?',
+                        type: 'warning',
+                        okText: 'Arsipkan',
+                        cancelText: 'Batal',
+                        showCancel: true,
+                        callback: function(ok) {
+                            if (!ok) return;
+                            bulkForm.submit();
+                        }
+                    });
+                } else {
+                    bulkForm.submit();
+                }
+            });
+
+            syncActionFields();
+            syncBulkBar();
         })();
     </script>
 </body>
