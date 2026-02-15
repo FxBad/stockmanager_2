@@ -923,7 +923,8 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 
 		if (categoryValue && categoryFilter) {
-			const selectedCategory = categoryFilter.options[categoryFilter.selectedIndex];
+			const selectedCategory =
+				categoryFilter.options[categoryFilter.selectedIndex];
 			chips.push({
 				key: "category",
 				label: `Kategori: ${selectedCategory ? selectedCategory.text : categoryValue}`,
@@ -931,7 +932,8 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 
 		if (statusValue && statusFilter) {
-			const selectedStatus = statusFilter.options[statusFilter.selectedIndex];
+			const selectedStatus =
+				statusFilter.options[statusFilter.selectedIndex];
 			chips.push({
 				key: "status",
 				label: `Status: ${selectedStatus ? selectedStatus.text : statusValue}`,
