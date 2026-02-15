@@ -67,3 +67,6 @@ coverage/
 
 # --- Local launcher scripts ---
 start.bat
+
+# --- Local server logs ---
+.php-server.log
