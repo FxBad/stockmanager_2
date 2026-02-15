@@ -900,7 +900,9 @@ document.addEventListener("DOMContentLoaded", function () {
 		if (!resultCount || !tableBody) return;
 
 		const noDataCell = tableBody.querySelector("td.no-data");
-		const rowCount = noDataCell ? 0 : tableBody.querySelectorAll("tr").length;
+		const rowCount = noDataCell
+			? 0
+			: tableBody.querySelectorAll("tr").length;
 		resultCount.textContent = `${rowCount} item ditemukan`;
 	}
 
