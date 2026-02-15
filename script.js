@@ -371,16 +371,19 @@ function validateUpdateStockForm() {
 }
 
 function getDirtyRows() {
-	return Array.from(
-		document.querySelectorAll("tr[data-item-id].is-dirty"),
-	);
+	return Array.from(document.querySelectorAll("tr[data-item-id].is-dirty"));
 }
 
 function setControlLockedState(control, locked) {
 	if (!control) return;
 
 	if (locked) {
-		if (!Object.prototype.hasOwnProperty.call(control.dataset, "lockPrevDisabled")) {
+		if (
+			!Object.prototype.hasOwnProperty.call(
+				control.dataset,
+				"lockPrevDisabled",
+			)
+		) {
 			control.dataset.lockPrevDisabled = control.disabled ? "1" : "0";
 		}
 		control.disabled = true;
