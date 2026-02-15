@@ -452,11 +452,11 @@ try {
                         </th>
                         <th>Stok</th>
                         <th>Pemakaian Harian</th>
-                        <th>Level (cm)</th>
                         <th>Ketahanan di lapangan</th>
                         <th>Status</th>
-                        <th>Terakhir Diperbarui</th>
+                        <th>Detail</th>
                         <th>Aksi</th>
+                        <th>Terakhir Diperbarui</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -505,7 +505,7 @@ try {
                             'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
                         ]);
                     ?>
-                        <tr data-item-id="<?php echo $id; ?>">
+                        <tr data-item-id="<?php echo $id; ?>" class="item-main-row">
                             <td data-label="Pilih" class="bulk-select-cell">
                                 <input type="checkbox" class="bulk-item-checkbox" value="<?php echo $id; ?>" aria-label="Pilih <?php echo htmlspecialchars($name); ?>">
                             </td>
@@ -513,21 +513,17 @@ try {
                             <td data-label="Kategori"><?php echo htmlspecialchars($itemCategory); ?></td>
                             <td data-label="Stok"><?php echo number_format((int)$field_stock); ?></td>
                             <td data-label="Pemakaian Harian"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
-                            <td data-label="Level (cm)"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
                             <td data-label="Katahanan"><?php echo number_format((int)$daysCoverage); ?> hari</td>
                             <td data-label="Status"><span class="status <?php echo htmlspecialchars($status); ?>"><?php echo translateStatus($status, 'id'); ?></span></td>
-                            <td data-label="Terakhir Diperbarui" class="last-login">
-                                <?php if (!empty($item['last_updated'])): ?>
-                                    <span class="timestamp">
-                                        <i class='bx bx-time-five'></i>
-                                        <?php echo htmlspecialchars($item['last_updated']); ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span class="never-login">
-                                        <i class='bx bx-x-circle'></i>
-                                        Tidak Pernah
-                                    </span>
-                                <?php endif; ?>
+                            <td data-label="Detail" class="item-expand-cell">
+                                <button
+                                    type="button"
+                                    class="btn-page row-expand-toggle"
+                                    data-target="details-row-<?php echo $id; ?>"
+                                    aria-expanded="false"
+                                    aria-controls="details-row-<?php echo $id; ?>">
+                                    Detail
+                                </button>
                             </td>
                             <td data-label="Aksi" class="actions">
                                 <div class="actions-inline">
@@ -557,6 +553,32 @@ try {
                                             <i class='bx bx-trash'></i>
                                         </button>
                                     </form>
+                                </div>
+                            </td>
+                            <td data-label="Terakhir Diperbarui" class="last-login">
+                                <?php if (!empty($item['last_updated'])): ?>
+                                    <span class="timestamp">
+                                        <i class='bx bx-time-five'></i>
+                                        <?php echo htmlspecialchars($item['last_updated']); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="never-login">
+                                        <i class='bx bx-x-circle'></i>
+                                        Tidak Pernah
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr id="details-row-<?php echo $id; ?>" class="item-details-row" hidden>
+                            <td colspan="10">
+                                <div class="item-details-grid">
+                                    <div class="item-detail"><span class="label">Level (cm)</span><span class="value"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></span></div>
+                                    <div class="item-detail"><span class="label">Mode Hitung</span><span class="value"><?php echo htmlspecialchars((string)$calculation_mode); ?></span></div>
+                                    <div class="item-detail"><span class="label">Konversi Unit</span><span class="value"><?php echo number_format((float)$unit_conversion, 1, '.', ''); ?></span></div>
+                                    <div class="item-detail"><span class="label">Konversi Level</span><span class="value"><?php echo number_format((float)$level_conversion, 1, '.', ''); ?></span></div>
+                                    <div class="item-detail"><span class="label">Min. Hari Coverage</span><span class="value"><?php echo (int)($item['min_days_coverage'] ?? 0); ?></span></div>
+                                    <div class="item-detail"><span class="label">Ditambahkan Oleh</span><span class="value"><?php echo htmlspecialchars((string)($item['added_by_name'] ?? '-')); ?></span></div>
+                                    <div class="item-detail item-detail--full"><span class="label">Deskripsi</span><span class="value"><?php echo htmlspecialchars((string)($item['description'] ?? '-')); ?></span></div>
                                 </div>
                             </td>
                         </tr>
@@ -983,6 +1005,28 @@ try {
 
             syncActionFields();
             syncBulkBar();
+        })();
+
+        (function() {
+            const toggles = document.querySelectorAll('.row-expand-toggle');
+            if (!toggles.length) return;
+
+            toggles.forEach(function(toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    const targetId = toggleBtn.getAttribute('data-target');
+                    if (!targetId) return;
+
+                    const detailsRow = document.getElementById(targetId);
+                    if (!detailsRow) return;
+
+                    const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+                    const nextExpanded = !isExpanded;
+
+                    detailsRow.hidden = !nextExpanded;
+                    toggleBtn.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+                    toggleBtn.textContent = nextExpanded ? 'Tutup' : 'Detail';
+                });
+            });
         })();
     </script>
 </body>

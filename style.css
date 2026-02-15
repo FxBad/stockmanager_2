@@ -1677,6 +1677,53 @@ td input[type="number"] {
 	color: var(--brunswick-green);
 }
 
+.item-expand-cell {
+	text-align: center;
+}
+
+.row-expand-toggle {
+	padding: 6px 10px;
+	font-size: 12px;
+}
+
+.item-details-row td {
+	background: #f9fbf8;
+	border-top: none;
+}
+
+.item-details-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(180px, 1fr));
+	gap: 10px;
+	padding: 10px 4px;
+}
+
+.item-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 8px 10px;
+	border: 1px solid rgba(58, 90, 64, 0.16);
+	border-radius: 8px;
+	background: #ffffff;
+}
+
+.item-detail .label {
+	font-size: 12px;
+	font-weight: 600;
+	color: #4b5563;
+}
+
+.item-detail .value {
+	font-size: 13px;
+	color: var(--brunswick-green);
+	word-break: break-word;
+}
+
+.item-detail--full {
+	grid-column: 1 / -1;
+}
+
 /* Mobile optimization for pagination */
 @media screen and (max-width: 420px) {
 	.table-pagination {
@@ -1696,6 +1743,10 @@ td input[type="number"] {
 	.bulk-action-form {
 		flex-direction: column;
 		align-items: stretch;
+	}
+
+	.item-details-grid {
+		grid-template-columns: 1fr;
 	}
 
 	.bulk-action-controls {
