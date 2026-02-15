@@ -941,6 +941,9 @@ td input[type="number"] {
 	);
 	color: var(--brunswick-green);
 	font-weight: 600;
+	position: sticky;
+	top: 0;
+	z-index: 2;
 }
 
 /* Sortable table header links */
