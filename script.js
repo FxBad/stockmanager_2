@@ -102,7 +102,10 @@ function runRowAutoSave(itemId) {
 	lockRowForAsync(row, true);
 
 	const formData = new FormData();
-	formData.append("field_stock[" + itemId + "]", fieldEl ? fieldEl.value : "0");
+	formData.append(
+		"field_stock[" + itemId + "]",
+		fieldEl ? fieldEl.value : "0",
+	);
 	if (levelEl) {
 		formData.append("level[" + itemId + "]", levelEl.value);
 	}
@@ -129,10 +132,15 @@ function runRowAutoSave(itemId) {
 						if (fieldEl) fieldEl.value = updatedItem.field_stock;
 						if (
 							levelEl &&
-							Object.prototype.hasOwnProperty.call(updatedItem, "level")
+							Object.prototype.hasOwnProperty.call(
+								updatedItem,
+								"level",
+							)
 						) {
 							levelEl.value =
-								updatedItem.level === null ? "" : updatedItem.level;
+								updatedItem.level === null
+									? ""
+									: updatedItem.level;
 						}
 						try {
 							updateTotal(itemId);
