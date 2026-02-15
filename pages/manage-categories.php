@@ -344,6 +344,45 @@ try {
             min-height: 20px;
         }
 
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            white-space: nowrap;
+        }
+
+        .status-chip i {
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .status-chip--active {
+            background: var(--hunter-green);
+            color: #fff;
+            border-color: var(--brunswick-green);
+        }
+
+        .status-chip--inactive {
+            background: #dc2626;
+            color: #fff;
+            border-color: #b91c1c;
+        }
+
+        @media screen and (max-width: 420px) {
+            .status-chip {
+                min-height: 28px;
+                padding: 4px 9px;
+                font-size: 0.75rem;
+            }
+        }
+
         @media screen and (max-width: 900px) {
             .category-action-hub {
                 flex-wrap: wrap;
@@ -450,7 +489,8 @@ try {
                             <td data-label="Nama"><?php echo htmlspecialchars((string)$category['name']); ?></td>
                             <td data-label="Urutan"><?php echo (int)$category['display_order']; ?></td>
                             <td data-label="Status">
-                                <span class="status <?php echo $isActive === 1 ? 'active' : 'inactive'; ?>">
+                                <span class="status-chip <?php echo $isActive === 1 ? 'status-chip--active' : 'status-chip--inactive'; ?>" aria-label="Status <?php echo $isActive === 1 ? 'aktif' : 'nonaktif'; ?>">
+                                    <i class='bx <?php echo $isActive === 1 ? 'bx-check-circle' : 'bx-x-circle'; ?>' aria-hidden="true"></i>
                                     <?php echo $isActive === 1 ? 'Aktif' : 'Nonaktif'; ?>
                                 </span>
                             </td>
