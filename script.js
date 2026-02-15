@@ -1791,23 +1791,22 @@ document.addEventListener("DOMContentLoaded", function () {
 			if (isServerGrid) {
 				return;
 			}
-	if (perPageFilter) {
-		perPageFilter.addEventListener("change", function () {
-			if (pageInput) {
-				pageInput.value = "1";
-			}
-			if (expandedStateInput) {
-				expandedStateInput.value = "";
-			}
-			syncFilterQueryToUrl();
-			if (isServerGrid) {
-				return;
-			}
+			if (perPageFilter) {
+				perPageFilter.addEventListener("change", function () {
+					if (pageInput) {
+						pageInput.value = "1";
+					}
+					if (expandedStateInput) {
+						expandedStateInput.value = "";
+					}
+					syncFilterQueryToUrl();
+					if (isServerGrid) {
+						return;
+					}
 
-			updateTableRows();
-		});
-	}
-
+					updateTableRows();
+				});
+			}
 
 			updateTableRows();
 		});
