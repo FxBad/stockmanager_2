@@ -693,14 +693,11 @@ td.actions .action-form {
 }
 
 tbody tr {
-	transition:
-		transform 0.2s,
-		background-color 0.2s;
+	transition: background-color 0.2s ease;
 }
 
 tbody tr:hover {
 	background-color: #f8f9fa;
-	transform: scale(1.01);
 	box-shadow: var(--box-shadow);
 }
 
