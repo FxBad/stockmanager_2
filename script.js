@@ -745,6 +745,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	const statusFilter = filterForm
 		? filterForm.querySelector('select[name="status"]')
 		: null;
+	const resultCount = document.getElementById("filter-result-count");
 	const tableBody = document.querySelector(".table-container table tbody");
 
 	if (!searchInput || !autocompleteList) return;
@@ -895,6 +896,14 @@ document.addEventListener("DOMContentLoaded", function () {
 		);
 	}
 
+	function updateResultCount() {
+		if (!resultCount || !tableBody) return;
+
+		const noDataCell = tableBody.querySelector("td.no-data");
+		const rowCount = noDataCell ? 0 : tableBody.querySelectorAll("tr").length;
+		resultCount.textContent = `${rowCount} item ditemukan`;
+	}
+
 	async function updateTableRows() {
 		if (!tableBody || !filterForm) return;
 
@@ -935,6 +944,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			const data = await response.json();
 			if (typeof data.html === "string") {
 				tableBody.innerHTML = data.html;
+				updateResultCount();
 			}
 		} catch (error) {
 			if (error.name !== "AbortError") {
@@ -1075,4 +1085,5 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
 
 	toggleClearButton();
+	updateResultCount();
 });

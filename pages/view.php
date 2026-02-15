@@ -149,6 +149,10 @@ $colspan = $colCount;
 
                         <button type="button" id="reset-filter-btn" class="btn-filter">Reset Filter</button>
                     </div>
+
+                    <div id="filter-result-count" class="filter-result-count" aria-live="polite">
+                        <?php echo count($items); ?> item ditemukan
+                    </div>
                 </form>
             </div>
 
