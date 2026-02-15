@@ -452,9 +452,11 @@ function clearServerValidationErrorsForRow(itemId) {
 	const row = getRowByItemId(itemId);
 	if (!row) return;
 
-	row.querySelectorAll(".cell-inline-error.server-validation").forEach((el) => {
-		el.remove();
-	});
+	row.querySelectorAll(".cell-inline-error.server-validation").forEach(
+		(el) => {
+			el.remove();
+		},
+	);
 
 	const fieldEl = document.getElementById("field_" + itemId);
 	const levelEl = document.getElementById("level_" + itemId);
@@ -522,7 +524,10 @@ function applyServerValidationErrors(errorsByItem) {
 		if (itemErrors.field_stock) {
 			const control = document.getElementById("field_" + itemId);
 			if (control) {
-				setServerValidationError(control, String(itemErrors.field_stock));
+				setServerValidationError(
+					control,
+					String(itemErrors.field_stock),
+				);
 				if (!firstInvalidControl) firstInvalidControl = control;
 			}
 		}
