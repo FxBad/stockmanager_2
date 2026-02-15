@@ -101,7 +101,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $orig = $itemsMap[$itemId];
             $itemHasLevel = isset($orig['has_level']) ? (bool)$orig['has_level'] : false;
 
-            $fieldStock = (int)$fieldStockPost;
+            $fieldStockRaw = is_string($fieldStockPost) ? trim($fieldStockPost) : $fieldStockPost;
+            if (
+                $fieldStockRaw === '' ||
+                !is_scalar($fieldStockRaw) ||
+                !preg_match('/^\d+$/', (string)$fieldStockRaw)
+            ) {
+                throw new Exception('Invalid field_stock value for item ID ' . $itemId . '. Value must be a non-negative integer.');
+            }
+            $fieldStock = (int)$fieldStockRaw;
 
             // Handle level input only for items with has_level = 1
             $levelValue = null;
