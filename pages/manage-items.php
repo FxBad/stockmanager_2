@@ -343,10 +343,10 @@ try {
                     <tr>
                         <th>
                             <a href="<?php echo htmlspecialchars($buildQuery([
-                                'sort' => 'name',
-                                'dir' => ($sortBy === 'name' && $sortDir === 'DESC') ? 'asc' : 'desc',
-                                'page' => 1
-                            ])); ?>" class="th-sort">
+                                            'sort' => 'name',
+                                            'dir' => ($sortBy === 'name' && $sortDir === 'DESC') ? 'asc' : 'desc',
+                                            'page' => 1
+                                        ])); ?>" class="th-sort">
                                 Nama Barang
                                 <?php if ($sortBy === 'name'): ?>
                                     <i class='bx bx-<?= $sortDir === 'ASC' ? 'up' : 'down' ?>-arrow-alt'></i>
@@ -357,10 +357,10 @@ try {
                         </th>
                         <th>
                             <a href="<?php echo htmlspecialchars($buildQuery([
-                                'sort' => 'category',
-                                'dir' => ($sortBy === 'category' && $sortDir === 'DESC') ? 'asc' : 'desc',
-                                'page' => 1
-                            ])); ?>" class="th-sort">
+                                            'sort' => 'category',
+                                            'dir' => ($sortBy === 'category' && $sortDir === 'DESC') ? 'asc' : 'desc',
+                                            'page' => 1
+                                        ])); ?>" class="th-sort">
                                 Kategori
                                 <?php if ($sortBy === 'category'): ?>
                                     <i class='bx bx-<?= $sortDir === 'ASC' ? 'up' : 'down' ?>-arrow-alt'></i>

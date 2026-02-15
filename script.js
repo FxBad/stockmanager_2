@@ -1329,8 +1329,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	const autocompleteList = document.getElementById("autocomplete-list");
 	const clearButton = document.getElementById("search-clear-btn");
 	const filterForm = searchInput ? searchInput.closest("form") : null;
-	const isServerGrid =
-		filterForm && filterForm.dataset.serverGrid === "1";
+	const isServerGrid = filterForm && filterForm.dataset.serverGrid === "1";
 	const pageInput = filterForm
 		? filterForm.querySelector('input[name="page"]')
 		: null;
