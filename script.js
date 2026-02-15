@@ -1354,17 +1354,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	if (!searchInput || !autocompleteList) return;
 
-	let debounceTimer;
 	let currentFocus = -1;
 	let activeFilterController = null;
 
 	// Debounce function to limit API calls
 	function debounce(func, delay) {
+		let timerId;
 		return function (...args) {
-			clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => func.apply(this, args), delay);
+			clearTimeout(timerId);
+			timerId = setTimeout(() => func.apply(this, args), delay);
 		};
 	}
+
+	const debouncedUpdateTableRows = debounce(function () {
+		updateTableRows();
+	}, 300);
 
 	// Highlight matching text
 	function highlightMatch(text, query) {
@@ -1757,7 +1761,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			return;
 		}
 
-		updateTableRows();
+		debouncedUpdateTableRows();
 	});
 
 	if (categoryFilter) {
