@@ -3798,6 +3798,22 @@ table th i {
 	border: 0;
 }
 
+.table-container input[type="number"].input-inline-error {
+	border-color: #dc2626;
+	background: #fff5f5;
+}
+
+.table-container td {
+	position: relative;
+}
+
+.cell-inline-error {
+	margin-top: 4px;
+	font-size: 12px;
+	line-height: 1.3;
+	color: #b91c1c;
+}
+
 tr.is-dirty {
 	background-color: #fffbeb;
 }
@@ -3869,5 +3885,9 @@ tr.is-dirty td[data-label="Nama Barang"] .row-dirty-indicator {
 	.row-dirty-indicator {
 		width: 7px;
 		height: 7px;
+	}
+
+	.cell-inline-error {
+		font-size: 11px;
 	}
 }

@@ -71,6 +71,21 @@ document.addEventListener("DOMContentLoaded", function () {
 			return;
 		}
 
+		const validationResult = validateUpdateStockForm();
+		if (!validationResult.isValid) {
+			if (validationResult.firstInvalidControl) {
+				validationResult.firstInvalidControl.focus();
+			}
+			showModal({
+				title: "Validasi Gagal",
+				message:
+					"Periksa input yang ditandai merah. Nilai harus bilangan bulat non-negatif.",
+				type: "warning",
+				okText: "OK",
+			});
+			return;
+		}
+
 		const stickyBtn = document.getElementById("batch-save-btn");
 		const fabBtn = document.getElementById("batch-save-fab");
 		const defaultStickyText = stickyBtn
@@ -216,6 +231,122 @@ function isControlDirty(control) {
 	);
 }
 
+function getControlCell(control) {
+	if (!control || !control.closest) return null;
+	return control.closest("td") || null;
+}
+
+function clearControlInlineError(control) {
+	if (!control) return;
+	control.classList.remove("input-inline-error");
+	control.removeAttribute("aria-invalid");
+
+	const cell = getControlCell(control);
+	if (!cell) return;
+
+	const id = control.id || "";
+	const existing = cell.querySelector(
+		'.cell-inline-error[data-for="' + id + '"]',
+	);
+	if (existing) {
+		existing.remove();
+	}
+}
+
+function setControlInlineError(control, message) {
+	if (!control) return;
+
+	clearControlInlineError(control);
+	control.classList.add("input-inline-error");
+	control.setAttribute("aria-invalid", "true");
+
+	const cell = getControlCell(control);
+	if (!cell) return;
+
+	const errorEl = document.createElement("div");
+	errorEl.className = "cell-inline-error";
+	errorEl.setAttribute("role", "alert");
+	errorEl.setAttribute("data-for", control.id || "");
+	errorEl.textContent = message;
+	cell.appendChild(errorEl);
+}
+
+function isNonNegativeIntegerValue(rawValue, allowEmpty = false) {
+	const value = String(rawValue ?? "").trim();
+	if (!value) {
+		return allowEmpty;
+	}
+	return /^\d+$/.test(value);
+}
+
+function validateStockControl(control) {
+	if (!control) return true;
+	const raw = String(control.value ?? "").trim();
+	if (!isNonNegativeIntegerValue(raw, false)) {
+		setControlInlineError(control, "Stok wajib bilangan bulat ≥ 0.");
+		return false;
+	}
+	clearControlInlineError(control);
+	return true;
+}
+
+function validateLevelControl(control, itemId) {
+	if (!control) return true;
+
+	const row = getRowByItemId(itemId);
+	const hasLevel = row && row.dataset && row.dataset.hasLevel === "1";
+	const raw = String(control.value ?? "").trim();
+
+	if (!hasLevel && raw !== "") {
+		setControlInlineError(
+			control,
+			"Level hanya boleh diisi untuk item yang mendukung level.",
+		);
+		return false;
+	}
+
+	if (hasLevel && !isNonNegativeIntegerValue(raw, true)) {
+		setControlInlineError(control, "Level wajib bilangan bulat ≥ 0.");
+		return false;
+	}
+
+	clearControlInlineError(control);
+	return true;
+}
+
+function validateRowControls(itemId) {
+	const fieldEl = document.getElementById("field_" + itemId);
+	const levelEl = document.getElementById("level_" + itemId);
+
+	const fieldOk = validateStockControl(fieldEl);
+	const levelOk = validateLevelControl(levelEl, itemId);
+
+	return fieldOk && levelOk;
+}
+
+function validateUpdateStockForm() {
+	const rows = document.querySelectorAll("tr[data-item-id]");
+	let firstInvalidControl = null;
+	let isValid = true;
+
+	rows.forEach((row) => {
+		const itemId = row.getAttribute("data-item-id");
+		if (!itemId) return;
+
+		const rowOk = validateRowControls(itemId);
+		if (!rowOk) {
+			isValid = false;
+			if (!firstInvalidControl) {
+				firstInvalidControl =
+					row.querySelector(".input-inline-error") ||
+					row.querySelector("input[type='number']");
+			}
+		}
+	});
+
+	return { isValid, firstInvalidControl };
+}
+
 function refreshRowDirtyState(itemId) {
 	const row = getRowByItemId(itemId);
 	if (!row) return;
@@ -345,22 +476,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		if (fieldEl) {
 			fieldEl.addEventListener("input", function () {
+				validateStockControl(fieldEl);
 				refreshRowDirtyState(itemId);
 			});
 			fieldEl.addEventListener("change", function () {
+				validateStockControl(fieldEl);
 				refreshRowDirtyState(itemId);
 			});
 		}
 
 		if (levelEl) {
 			levelEl.addEventListener("input", function () {
+				validateLevelControl(levelEl, itemId);
 				refreshRowDirtyState(itemId);
 			});
 			levelEl.addEventListener("change", function () {
+				validateLevelControl(levelEl, itemId);
 				refreshRowDirtyState(itemId);
 			});
 		}
 
+		validateRowControls(itemId);
 		refreshRowDirtyState(itemId);
 	});
 

@@ -369,7 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php foreach ($items as $item):
                             $totalStock = $item['field_stock'];
                         ?>
-                            <tr data-item-id="<?php echo $item['id']; ?>" data-category="<?php echo htmlspecialchars($item['category']); ?>">
+                            <tr data-item-id="<?php echo $item['id']; ?>" data-category="<?php echo htmlspecialchars($item['category']); ?>" data-has-level="<?php echo (isset($item['has_level']) && (int)$item['has_level'] === 1) ? '1' : '0'; ?>">
                                 <td data-label="Nama Barang">
                                     <div class="item-name-wrap">
                                         <span><?php echo htmlspecialchars($item['name']); ?></span>
