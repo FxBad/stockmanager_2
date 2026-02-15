@@ -1,0 +1,203 @@
+﻿<?php
+session_start();
+require_once __DIR__ . '/../cache_control.php';
+
+// Check if user is not logged in
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../functions.php';
+// Determine whether to show sensitive fields (early)
+$showSensitive = isRole('office') || isRole('admin');
+
+// Consolidated counts (single query) and safe fetch of recent updates
+try {
+    $stmt = $pdo->query(
+        "SELECT
+            SUM(status = 'in-stock') AS instock,
+            SUM(status IN ('low-stock', 'warning-stock')) AS lowstock,
+            SUM(status = 'out-stock') AS outstock
+        FROM items
+        WHERE " . activeItemsWhereSql()
+    );
+    $counts = $stmt->fetch(PDO::FETCH_ASSOC);
+    $inStock = isset($counts['instock']) ? (int)$counts['instock'] : 0;
+    $lowStock = isset($counts['lowstock']) ? (int)$counts['lowstock'] : 0;
+    $outStock = isset($counts['outstock']) ? (int)$counts['outstock'] : 0;
+
+    // Check for has_level column
+    $hasLevelCol = db_has_column('items', 'has_level');
+    $levelSelect = $hasLevelCol ? ', i.has_level' : '';
+    $hasLevelConversionCol = db_has_column('items', 'level_conversion');
+    $levelConversionSelect = $hasLevelConversionCol ? ', i.level_conversion' : ', i.unit_conversion AS level_conversion';
+    $hasCalculationModeCol = db_has_column('items', 'calculation_mode');
+    $calculationModeSelect = $hasCalculationModeCol ? ', i.calculation_mode' : ", 'combined' AS calculation_mode";
+
+    // Get recent updates with newest first
+    $stmt = $pdo->query(
+        "SELECT i.id, i.name, i.category, i.field_stock, i.unit_conversion{$levelConversionSelect}{$calculationModeSelect}, i.daily_consumption, i.min_days_coverage, i.level, i.status, i.last_updated, u.username AS updated_by_name{$levelSelect}
+         FROM items i
+         LEFT JOIN users u ON i.updated_by = u.id
+            WHERE " . activeItemsWhereSql('i') . "
+         ORDER BY COALESCE(i.last_updated, '1970-01-01 00:00:00') DESC, i.id DESC
+         LIMIT 8"
+    );
+    $recentUpdates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!is_array($recentUpdates)) {
+        $recentUpdates = [];
+    }
+} catch (Exception $e) {
+    // On DB error, fallback to zero counts and empty recent updates
+    $inStock = $lowStock = $outStock = 0;
+    $recentUpdates = [];
+}
+?>
+
+<!DOCTYPE html>
+<!-- Coding By CodingNepal - codingnepalweb.com -->
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>StockManager</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css?<?php echo getVersion(); ?>" />
+    <!-- Boxicons CSS -->
+    <link
+        href="https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css"
+        rel="stylesheet" />
+</head>
+
+<body>
+    <?php include __DIR__ . '/../shared/nav.php'; ?>
+
+    <main class="main-container">
+        <!-- Header Text -->
+        <div class="main-title">
+            <h2>Dashboard</h2>
+        </div>
+
+        <!-- Cards -->
+        <div class="card-container">
+            <div class="card card-instock" onclick="location.href='view.php?status=in-stock'">
+                <div class="card-inner">
+                    <i class="bx bx-trending-up"></i>
+                    <span class="card-title">Tersedia</span>
+                </div>
+                <h3><?php echo $inStock; ?></h3>
+            </div>
+            <div class="card card-lowstock" onclick="location.href='view.php?status=low-stock'">
+                <div class="card-inner">
+                    <i class="bx bx-trending-down"></i>
+                    <span class="card-title">Stok Rendah</span>
+                </div>
+                <h3><?php echo $lowStock; ?></h3>
+            </div>
+            <div class="card card-outstock" onclick="location.href='view.php?status=out-stock'">
+                <div class="card-inner">
+                    <i class="bx bx-error-circle"></i>
+                    <span class="card-title">Habis</span>
+                </div>
+                <h3><?php echo $outStock; ?></h3>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <h3>Stok Terbaru</h3>
+            <!-- Add data-labels for mobile -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nama Barang</th>
+                        <th>Kategori</th>
+                        <th>Stok</th>
+                        <th>Level (cm)</th>
+                        <th>Ketahanan di lapangan</th>
+                        <th>Status</th>
+                        <th>Terakhir Diperbarui</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($recentUpdates as $item):
+                        // Normalize and cast fields to safe types
+                        $name = isset($item['name']) ? (string)$item['name'] : '';
+                        $category = isset($item['category']) ? (string)$item['category'] : '';
+                        $field_stock = isset($item['field_stock']) ? (float)$item['field_stock'] : 0;
+                        $unit_conversion = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1;
+                        $level_conversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unit_conversion;
+                        $daily_consumption = isset($item['daily_consumption']) ? (float)$item['daily_consumption'] : 0;
+                        $level = array_key_exists('level', $item) ? $item['level'] : null;
+                        $calculation_mode = isset($item['calculation_mode']) ? (string)$item['calculation_mode'] : 'combined';
+                        $status = isset($item['status']) ? (string)$item['status'] : '';
+
+                        // Determine if item uses level-based calculation
+                        $hasLevel = isset($item['has_level']) ? (bool)$item['has_level'] : false;
+
+                        $daysCoverage = calculateDaysCoverage(
+                            $field_stock,
+                            0,
+                            $unit_conversion,
+                            $daily_consumption,
+                            $name,
+                            $level,
+                            $hasLevel,
+                            [
+                                'item_id' => isset($item['id']) ? (int)$item['id'] : 0,
+                                'category' => $category,
+                                'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
+                                'level_conversion' => $level_conversion,
+                                'qty_conversion' => $unit_conversion,
+                                'calculation_mode' => $calculation_mode
+                            ]
+                        );
+                    ?>
+                        <tr>
+                            <td data-label="Nama Barang"><?php echo htmlspecialchars($name); ?></td>
+                            <td data-label="Kategori"><?php echo htmlspecialchars($category); ?></td>
+                            <td data-label="Stok"><?php echo number_format((int)$field_stock); ?></td>
+                            <td data-label="Level (cm)"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
+                            <td data-label="Ketahanan di lapangan"><?php echo number_format((int)$daysCoverage); ?> Hari</td>
+                            <td data-label="Status">
+                                <span class="status <?php echo htmlspecialchars($status); ?>">
+                                    <?php echo translateStatus($status, 'id'); ?>
+                                </span>
+                            </td>
+                            <td data-label="Terakhir Diperbarui" class="last-login">
+                                <?php if (!empty($item['last_updated'])): ?>
+                                    <span class="timestamp">
+                                        <i class='bx bx-time-five'></i>
+                                        <?php
+                                        // Ensure date formatting is handled in PHP
+                                        echo date('d/m/Y, H:i', strtotime($item['last_updated'])) . ' WIB';
+                                        ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="never-login">
+                                        <i class='bx bx-x-circle'></i>
+                                        Tidak Pernah
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- JavaScript -->
+    <script src="script.js?<?php echo getVersion(); ?>"></script>
+    <script src="transition.js"></script>
+</body>
+
+</html>
