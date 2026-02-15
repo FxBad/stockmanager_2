@@ -4,6 +4,7 @@ $formState = isset($formState) && is_array($formState) ? $formState : [];
 $formUnits = isset($formUnits) && is_array($formUnits) ? $formUnits : [];
 $formCategories = isset($formCategories) && is_array($formCategories) ? $formCategories : [];
 $formShowLevel = isset($formShowLevel) ? (bool)$formShowLevel : false;
+$formAllowMasterQuickCreate = isset($formAllowMasterQuickCreate) ? (bool)$formAllowMasterQuickCreate : false;
 $formLevelGroupId = isset($formLevelGroupId) ? (string)$formLevelGroupId : ($formPrefix . 'level-group');
 
 $nameValue = isset($formState['name']) ? (string)$formState['name'] : '';
@@ -49,7 +50,14 @@ foreach ($formUnits as $unitOption) {
 </div>
 
 <div class="form-group">
-    <label for="<?php echo htmlspecialchars($formPrefix . 'category'); ?>">Kategori</label>
+    <div class="form-group-inline-head">
+        <label for="<?php echo htmlspecialchars($formPrefix . 'category'); ?>">Kategori</label>
+        <?php if ($formAllowMasterQuickCreate): ?>
+            <button type="button" class="btn-inline-master" onclick="openQuickMasterModal('category', '<?php echo htmlspecialchars($formPrefix . 'category', ENT_QUOTES); ?>')">
+                <i class='bx bx-plus'></i> Tambah
+            </button>
+        <?php endif; ?>
+    </div>
     <select id="<?php echo htmlspecialchars($formPrefix . 'category'); ?>" name="category" required>
         <option value="">Pilih Kategori</option>
         <?php foreach ($normalizedCategories as $categoryOption): ?>
@@ -66,7 +74,14 @@ foreach ($formUnits as $unitOption) {
 </div>
 
 <div class="form-group">
-    <label for="<?php echo htmlspecialchars($formPrefix . 'unit'); ?>">Satuan</label>
+    <div class="form-group-inline-head">
+        <label for="<?php echo htmlspecialchars($formPrefix . 'unit'); ?>">Satuan</label>
+        <?php if ($formAllowMasterQuickCreate): ?>
+            <button type="button" class="btn-inline-master" onclick="openQuickMasterModal('unit', '<?php echo htmlspecialchars($formPrefix . 'unit', ENT_QUOTES); ?>')">
+                <i class='bx bx-plus'></i> Tambah
+            </button>
+        <?php endif; ?>
+    </div>
     <select id="<?php echo htmlspecialchars($formPrefix . 'unit'); ?>" name="unit" required>
         <?php if (empty($formUnits)): ?>
             <option value="" disabled selected>Belum ada kategori unit</option>

@@ -10,6 +10,7 @@ requireRole(['office', 'admin']);
 $message = '';
 $units = getUnits();
 $itemCategories = getItemCategories();
+$isAdminUser = isRole('admin');
 
 $formatAuditChangedFields = static function (array $row): array {
     $changed = [];
@@ -782,6 +783,7 @@ try {
                         $formUnits = $units;
                         $formCategories = $itemCategories;
                         $formShowLevel = $itemsHasLevelFlag;
+                        $formAllowMasterQuickCreate = $isAdminUser;
                         $formLevelGroupId = 'add-level-group';
                         include __DIR__ . '/../shared/item-form-fields.php';
                         ?>
@@ -810,6 +812,7 @@ try {
                         $formUnits = $units;
                         $formCategories = $itemCategories;
                         $formShowLevel = $itemsHasLevelFlag;
+                        $formAllowMasterQuickCreate = $isAdminUser;
                         $formLevelGroupId = 'edit-level-group';
                         include __DIR__ . '/../shared/item-form-fields.php';
                         ?>
@@ -821,6 +824,80 @@ try {
                 </div>
             </div>
         </div>
+
+        <?php if ($isAdminUser): ?>
+            <div class="app-modal-overlay" id="quick-category-modal" onclick="closeQuickMasterModalOnBackdrop(event, 'quick-category-modal')">
+                <div class="app-modal app-modal--category" role="dialog" aria-modal="true" aria-labelledby="quick-category-modal-title">
+                    <div class="app-modal-header">
+                        <h3 id="quick-category-modal-title">Tambah Kategori Cepat</h3>
+                        <button type="button" class="app-modal-close" onclick="closeQuickMasterModal('quick-category-modal')">&times;</button>
+                    </div>
+                    <div class="app-modal-body">
+                        <form id="quick-category-form" class="add-form" onsubmit="return submitQuickCategory(event)">
+                            <input type="hidden" id="quick_category_target" value="">
+
+                            <div class="form-group">
+                                <label for="quick_category_name">Nama Kategori</label>
+                                <input type="text" id="quick_category_name" name="name" maxlength="100" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quick_category_display_order">Urutan Tampil</label>
+                                <input type="number" id="quick_category_display_order" name="display_order" min="0" max="9999" value="0" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quick_category_is_active">
+                                    <input type="checkbox" id="quick_category_is_active" name="is_active" value="1" checked>
+                                    Aktif
+                                </label>
+                            </div>
+
+                            <div id="quick-category-feedback" class="inline-feedback" role="status" aria-live="polite"></div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-submit" id="quick-category-submit">Simpan Kategori</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-modal-overlay" id="quick-unit-modal" onclick="closeQuickMasterModalOnBackdrop(event, 'quick-unit-modal')">
+                <div class="app-modal app-modal--category" role="dialog" aria-modal="true" aria-labelledby="quick-unit-modal-title">
+                    <div class="app-modal-header">
+                        <h3 id="quick-unit-modal-title">Tambah Satuan Cepat</h3>
+                        <button type="button" class="app-modal-close" onclick="closeQuickMasterModal('quick-unit-modal')">&times;</button>
+                    </div>
+                    <div class="app-modal-body">
+                        <form id="quick-unit-form" class="add-form" onsubmit="return submitQuickUnit(event)">
+                            <input type="hidden" id="quick_unit_target" value="">
+
+                            <div class="form-group">
+                                <label for="quick_unit_value">Value (unik)</label>
+                                <input type="text" id="quick_unit_value" name="value" maxlength="50" pattern="[a-zA-Z0-9_\-\s]+" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quick_unit_label">Label</label>
+                                <input type="text" id="quick_unit_label" name="label" maxlength="100" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quick_unit_display_order">Urutan Tampil</label>
+                                <input type="number" id="quick_unit_display_order" name="display_order" min="0" max="9999" value="0" required>
+                            </div>
+
+                            <div id="quick-unit-feedback" class="inline-feedback" role="status" aria-live="polite"></div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-submit" id="quick-unit-submit">Simpan Satuan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
     </main>
     <script src="script.js?<?php echo getVersion(); ?>"></script>
     <script>
@@ -966,8 +1043,202 @@ try {
             if (event.key === 'Escape') {
                 closeItemModal('add-item-modal');
                 closeItemModal('edit-item-modal');
+                closeQuickMasterModal('quick-category-modal');
+                closeQuickMasterModal('quick-unit-modal');
             }
         });
+
+        function closeQuickMasterModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        function closeQuickMasterModalOnBackdrop(event, modalId) {
+            if (event.target && event.target.id === modalId) {
+                closeQuickMasterModal(modalId);
+            }
+        }
+
+        function setInlineFeedback(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.className = 'inline-feedback ' + (type === 'error' ? 'error' : 'success');
+            el.textContent = message || '';
+        }
+
+        function clearInlineFeedback(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.className = 'inline-feedback';
+            el.textContent = '';
+        }
+
+        function upsertOption(selectId, value, label, makeSelected) {
+            const selectEl = document.getElementById(selectId);
+            if (!selectEl || !value) return;
+
+            let optionEl = Array.from(selectEl.options).find(function(opt) {
+                return String(opt.value) === String(value);
+            });
+
+            if (!optionEl) {
+                optionEl = document.createElement('option');
+                optionEl.value = value;
+                optionEl.textContent = label || value;
+                selectEl.appendChild(optionEl);
+            } else if (label && optionEl.textContent !== label) {
+                optionEl.textContent = label;
+            }
+
+            if (makeSelected) {
+                selectEl.value = value;
+            }
+        }
+
+        function refreshCategoryOptions(value, label, targetSelectId) {
+            upsertOption('add_category', value, label, targetSelectId === 'add_category');
+            upsertOption('edit_category', value, label, targetSelectId === 'edit_category');
+        }
+
+        function refreshUnitOptions(value, label, targetSelectId) {
+            upsertOption('add_unit', value, label, targetSelectId === 'add_unit');
+            upsertOption('edit_unit', value, label, targetSelectId === 'edit_unit');
+        }
+
+        function openQuickMasterModal(type, targetSelectId) {
+            if (type === 'category') {
+                const form = document.getElementById('quick-category-form');
+                if (form) {
+                    form.reset();
+                }
+                const orderEl = document.getElementById('quick_category_display_order');
+                const activeEl = document.getElementById('quick_category_is_active');
+                if (orderEl) orderEl.value = 0;
+                if (activeEl) activeEl.checked = true;
+                const targetEl = document.getElementById('quick_category_target');
+                if (targetEl) targetEl.value = targetSelectId || '';
+                clearInlineFeedback('quick-category-feedback');
+                const modal = document.getElementById('quick-category-modal');
+                if (modal) modal.classList.add('show');
+                return;
+            }
+
+            if (type === 'unit') {
+                const form = document.getElementById('quick-unit-form');
+                if (form) {
+                    form.reset();
+                }
+                const orderEl = document.getElementById('quick_unit_display_order');
+                if (orderEl) orderEl.value = 0;
+                const targetEl = document.getElementById('quick_unit_target');
+                if (targetEl) targetEl.value = targetSelectId || '';
+                clearInlineFeedback('quick-unit-feedback');
+                const modal = document.getElementById('quick-unit-modal');
+                if (modal) modal.classList.add('show');
+            }
+        }
+
+        function submitQuickCategory(event) {
+            event.preventDefault();
+
+            const form = document.getElementById('quick-category-form');
+            const submitBtn = document.getElementById('quick-category-submit');
+            const targetSelectId = (document.getElementById('quick_category_target') || {}).value || '';
+            if (!form || !submitBtn) return false;
+
+            clearInlineFeedback('quick-category-feedback');
+            submitBtn.disabled = true;
+
+            const payload = new FormData(form);
+            payload.append('action', 'quick_create_category');
+
+            fetch('actions/manage-master-inline.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
+                })
+                .then(function(response) {
+                    return response.json().catch(function() {
+                        return {
+                            success: false,
+                            message: 'Response tidak valid.'
+                        };
+                    });
+                })
+                .then(function(result) {
+                    if (!result || result.success !== true || !result.item || !result.item.value) {
+                        setInlineFeedback('quick-category-feedback', (result && result.message) ? result.message : 'Gagal menambahkan kategori.', 'error');
+                        return;
+                    }
+
+                    refreshCategoryOptions(String(result.item.value), String(result.item.label || result.item.value), targetSelectId);
+                    setInlineFeedback('quick-category-feedback', result.message || 'Kategori berhasil ditambahkan.', 'success');
+
+                    window.setTimeout(function() {
+                        closeQuickMasterModal('quick-category-modal');
+                    }, 250);
+                })
+                .catch(function() {
+                    setInlineFeedback('quick-category-feedback', 'Terjadi kesalahan jaringan. Coba lagi.', 'error');
+                })
+                .finally(function() {
+                    submitBtn.disabled = false;
+                });
+
+            return false;
+        }
+
+        function submitQuickUnit(event) {
+            event.preventDefault();
+
+            const form = document.getElementById('quick-unit-form');
+            const submitBtn = document.getElementById('quick-unit-submit');
+            const targetSelectId = (document.getElementById('quick_unit_target') || {}).value || '';
+            if (!form || !submitBtn) return false;
+
+            clearInlineFeedback('quick-unit-feedback');
+            submitBtn.disabled = true;
+
+            const payload = new FormData(form);
+            payload.append('action', 'quick_create_unit');
+
+            fetch('actions/manage-master-inline.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
+                })
+                .then(function(response) {
+                    return response.json().catch(function() {
+                        return {
+                            success: false,
+                            message: 'Response tidak valid.'
+                        };
+                    });
+                })
+                .then(function(result) {
+                    if (!result || result.success !== true || !result.item || !result.item.value) {
+                        setInlineFeedback('quick-unit-feedback', (result && result.message) ? result.message : 'Gagal menambahkan satuan.', 'error');
+                        return;
+                    }
+
+                    refreshUnitOptions(String(result.item.value), String(result.item.label || result.item.value), targetSelectId);
+                    setInlineFeedback('quick-unit-feedback', result.message || 'Satuan berhasil ditambahkan.', 'success');
+
+                    window.setTimeout(function() {
+                        closeQuickMasterModal('quick-unit-modal');
+                    }, 250);
+                })
+                .catch(function() {
+                    setInlineFeedback('quick-unit-feedback', 'Terjadi kesalahan jaringan. Coba lagi.', 'error');
+                })
+                .finally(function() {
+                    submitBtn.disabled = false;
+                });
+
+            return false;
+        }
 
         (function() {
             updateLevelGroup('add_has_level', 'add-level-group');

@@ -1134,6 +1134,48 @@ td input[type="number"] {
 	font-weight: 500;
 }
 
+.form-group-inline-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.btn-inline-master {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	border: 1px solid #d9e2d7;
+	background: #f3faf5;
+	color: var(--hunter-green);
+	border-radius: 6px;
+	padding: 6px 10px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.btn-inline-master:hover {
+	background: var(--hunter-green);
+	color: #fff;
+	border-color: var(--hunter-green);
+}
+
+.inline-feedback {
+	min-height: 18px;
+	font-size: 13px;
+	font-weight: 500;
+	color: #666;
+}
+
+.inline-feedback.success {
+	color: #166534;
+}
+
+.inline-feedback.error {
+	color: #b91c1c;
+}
+
 .form-group input,
 .form-group select,
 .form-group textarea {
@@ -1179,6 +1221,11 @@ td input[type="number"] {
 		font-size: 14px;
 	}
 
+	.btn-inline-master {
+		padding: 7px 10px;
+		font-size: 12px;
+	}
+
 	.form-group input,
 	.form-group select,
 	.form-group textarea {
@@ -1213,6 +1260,11 @@ td input[type="number"] {
 
 	.form-group label {
 		font-size: 13px;
+	}
+
+	.btn-inline-master {
+		padding: 6px 9px;
+		font-size: 11px;
 	}
 
 	.form-group input,
