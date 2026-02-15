@@ -577,6 +577,13 @@ nav.open ~ .main-container {
 	text-align: left;
 }
 
+.table-container th.numeric-col,
+.table-container td.numeric-col {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: "tnum" 1;
+}
+
 /* Keep td as table-cell (not flex) */
 td.actions {
 	display: table-cell !important;

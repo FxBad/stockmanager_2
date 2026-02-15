@@ -182,12 +182,12 @@ $colspan = $colCount;
                         </th>
 
                         <!-- Regular columns -->
-                        <th>Stok</th>
+                        <th class="numeric-col">Stok</th>
                         <?php if ($showSensitive): ?>
-                            <th>Pemakaian Harian</th>
+                            <th class="numeric-col">Pemakaian Harian</th>
                         <?php endif; ?>
-                        <th>Level (cm)</th>
-                        <th>Ketahanan di lapangan</th>
+                        <th class="numeric-col">Level (cm)</th>
+                        <th class="numeric-col">Ketahanan di lapangan</th>
                         <th>Status</th>
 
                         <!-- Sortable Last Updated column -->
@@ -256,12 +256,12 @@ $colspan = $colCount;
                             <tr>
                                 <td data-label="Nama Barang"><?php echo htmlspecialchars($name); ?></td>
                                 <td data-label="Kategori"><?php echo htmlspecialchars($category); ?></td>
-                                <td data-label="Stok"><?php echo number_format((int)$field_stock); ?></td>
+                                <td data-label="Stok" class="numeric-col"><?php echo number_format((int)$field_stock); ?></td>
                                 <?php if ($showSensitive): ?>
-                                    <td data-label="Pemakaian Harian"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
+                                    <td data-label="Pemakaian Harian" class="numeric-col"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
                                 <?php endif; ?>
-                                <td data-label="Level (cm)"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
-                                <td data-label="Ketahanan di lapangan"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
+                                <td data-label="Level (cm)" class="numeric-col"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
+                                <td data-label="Ketahanan di lapangan" class="numeric-col"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
                                 <td data-label="Status">
                                     <span class="status <?php echo htmlspecialchars($status); ?>">
                                         <?php echo translateStatus($status, 'id'); ?>

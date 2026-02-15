@@ -144,10 +144,10 @@ try {
                 <tr data-item-id="<?php echo $id; ?>">
                     <td data-label="Nama Barang"><?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></td>
                     <td data-label="Kategori"><?php echo htmlspecialchars($itemCategory, ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td data-label="Stok"><?php echo number_format((int)$fieldStock); ?></td>
-                    <td data-label="Pemakaian Harian"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
-                    <td data-label="Level (cm)"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
-                    <td data-label="Katahanan"><?php echo number_format((int)$daysCoverage); ?> hari</td>
+                    <td data-label="Stok" class="numeric-col"><?php echo number_format((int)$fieldStock); ?></td>
+                    <td data-label="Pemakaian Harian" class="numeric-col"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
+                    <td data-label="Level (cm)" class="numeric-col"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
+                    <td data-label="Katahanan" class="numeric-col"><?php echo number_format((int)$daysCoverage); ?> hari</td>
                     <td data-label="Status"><span class="status <?php echo htmlspecialchars($itemStatus, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?></span></td>
                     <td data-label="Terakhir Diperbarui" class="last-login">
                         <?php if (!empty($item['last_updated'])): ?>
@@ -183,12 +183,12 @@ try {
                 <tr>
                     <td data-label="Nama Barang"><?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></td>
                     <td data-label="Kategori"><?php echo htmlspecialchars($itemCategory, ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td data-label="Stok"><?php echo number_format((int)$fieldStock); ?></td>
+                    <td data-label="Stok" class="numeric-col"><?php echo number_format((int)$fieldStock); ?></td>
                     <?php if ($showSensitive): ?>
-                        <td data-label="Pemakaian Harian"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
+                        <td data-label="Pemakaian Harian" class="numeric-col"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>
                     <?php endif; ?>
-                    <td data-label="Level (cm)"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
-                    <td data-label="Ketahanan di lapangan"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
+                    <td data-label="Level (cm)" class="numeric-col"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></td>
+                    <td data-label="Ketahanan di lapangan" class="numeric-col"><?php echo number_format($daysCoverage, 1); ?> Hari</td>
                     <td data-label="Status">
                         <span class="status <?php echo htmlspecialchars($itemStatus, ENT_QUOTES, 'UTF-8'); ?>">
                             <?php echo htmlspecialchars(translateStatus($itemStatus, 'id'), ENT_QUOTES, 'UTF-8'); ?>
