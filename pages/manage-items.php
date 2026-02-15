@@ -11,6 +11,76 @@ $message = '';
 $units = getUnits();
 $itemCategories = getItemCategories();
 
+$formatAuditChangedFields = static function (array $row): array {
+    $changed = [];
+
+    if (array_key_exists('field_stock_old', $row) && array_key_exists('field_stock_new', $row) && (string)$row['field_stock_old'] !== (string)$row['field_stock_new']) {
+        $changed[] = 'Stok Lapangan';
+    }
+    if (array_key_exists('status_old', $row) && array_key_exists('status_new', $row) && (string)$row['status_old'] !== (string)$row['status_new']) {
+        $changed[] = 'Status';
+    }
+    if (array_key_exists('total_stock_old', $row) && array_key_exists('total_stock_new', $row) && (string)$row['total_stock_old'] !== (string)$row['total_stock_new']) {
+        $changed[] = 'Total Stok';
+    }
+    if (array_key_exists('days_coverage_old', $row) && array_key_exists('days_coverage_new', $row) && (string)$row['days_coverage_old'] !== (string)$row['days_coverage_new']) {
+        $changed[] = 'Ketahanan Hari';
+    }
+
+    if (isset($row['note']) && trim((string)$row['note']) !== '') {
+        $changed[] = 'Catatan';
+    }
+
+    $action = strtolower((string)($row['action'] ?? ''));
+    if ($action === 'create') {
+        $changed[] = 'Item Baru';
+    } elseif ($action === 'archive' || $action === 'delete') {
+        $changed[] = 'Arsip';
+    }
+
+    if (empty($changed)) {
+        $changed[] = 'Perubahan Data';
+    }
+
+    return array_values(array_unique($changed));
+};
+
+$latestAuditRows = [];
+$latestAuditMaxId = 0;
+
+try {
+    $auditStmt = $pdo->query("SELECT
+            h.id,
+            h.item_id,
+            h.item_name,
+            h.action,
+            h.field_stock_old,
+            h.field_stock_new,
+            h.status_old,
+            h.status_new,
+            h.total_stock_old,
+            h.total_stock_new,
+            h.days_coverage_old,
+            h.days_coverage_new,
+            h.level,
+            h.note,
+            h.changed_at,
+            u.username AS changed_by_username,
+            u.full_name AS changed_by_full_name
+        FROM item_stock_history h
+        LEFT JOIN users u ON h.changed_by = u.id
+        ORDER BY h.id DESC
+        LIMIT 15");
+
+    $latestAuditRows = $auditStmt ? $auditStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+    if (!empty($latestAuditRows)) {
+        $latestAuditMaxId = (int)$latestAuditRows[0]['id'];
+    }
+} catch (Exception $e) {
+    $latestAuditRows = [];
+    $latestAuditMaxId = 0;
+}
+
 $itemsHasLevelFlag = db_has_column('items', 'has_level');
 $itemsHasLevelValue = db_has_column('items', 'level');
 $itemsHasLevelConversion = db_has_column('items', 'level_conversion');
@@ -392,6 +462,42 @@ try {
         </div>
 
         <div class="table-container">
+            <section class="embedded-audit-panel" id="embedded-audit-panel" data-last-audit-id="<?php echo (int)$latestAuditMaxId; ?>">
+                <div class="embedded-audit-header">
+                    <h3>Panel Audit</h3>
+                    <span class="embedded-audit-subtitle">Pemantauan perubahan data real-time</span>
+                </div>
+                <ul class="embedded-audit-list" id="embedded-audit-list">
+                    <?php if (!empty($latestAuditRows)): ?>
+                        <?php foreach ($latestAuditRows as $auditRow):
+                            $changedByLabel = trim((string)($auditRow['changed_by_full_name'] ?? ''));
+                            if ($changedByLabel === '') {
+                                $changedByLabel = trim((string)($auditRow['changed_by_username'] ?? 'System'));
+                            }
+                            $changedFields = $formatAuditChangedFields($auditRow);
+                        ?>
+                            <li class="embedded-audit-item" data-audit-id="<?php echo (int)$auditRow['id']; ?>">
+                                <div class="embedded-audit-top">
+                                    <strong><?php echo htmlspecialchars((string)($auditRow['item_name'] ?? 'Item')); ?></strong>
+                                    <span class="embedded-audit-time"><?php echo htmlspecialchars((string)($auditRow['changed_at'] ?? '-')); ?></span>
+                                </div>
+                                <div class="embedded-audit-meta">
+                                    <span>Oleh: <?php echo htmlspecialchars($changedByLabel); ?></span>
+                                    <span>Aksi: <?php echo htmlspecialchars((string)($auditRow['action'] ?? '-')); ?></span>
+                                </div>
+                                <div class="embedded-audit-fields">
+                                    <?php foreach ($changedFields as $fieldLabel): ?>
+                                        <span class="embedded-audit-badge"><?php echo htmlspecialchars((string)$fieldLabel); ?></span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li class="embedded-audit-empty" id="embedded-audit-empty">Belum ada riwayat perubahan data.</li>
+                    <?php endif; ?>
+                </ul>
+            </section>
+
             <div class="table-header">
                 <form method="GET" class="table-filters" data-filter-context="manage" data-default-sort="last_updated" data-default-dir="desc" data-server-grid="1">
                     <div class="search-box">
@@ -1078,6 +1184,96 @@ try {
             });
 
             syncExpandedStateUrl();
+        })();
+
+        (function() {
+            const panel = document.getElementById('embedded-audit-panel');
+            const listEl = document.getElementById('embedded-audit-list');
+            if (!panel || !listEl) return;
+
+            let lastAuditId = parseInt(panel.getAttribute('data-last-audit-id') || '0', 10) || 0;
+
+            function escapeHtml(value) {
+                return String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function renderAuditItem(item) {
+                const fields = Array.isArray(item.changed_fields) ? item.changed_fields : [];
+                const fieldBadges = fields.map(function(field) {
+                    return '<span class="embedded-audit-badge">' + escapeHtml(field) + '</span>';
+                }).join('');
+
+                return '<li class="embedded-audit-item" data-audit-id="' + Number(item.id || 0) + '">' +
+                    '<div class="embedded-audit-top">' +
+                    '<strong>' + escapeHtml(item.item_name || 'Item') + '</strong>' +
+                    '<span class="embedded-audit-time">' + escapeHtml(item.changed_at || '-') + '</span>' +
+                    '</div>' +
+                    '<div class="embedded-audit-meta">' +
+                    '<span>Oleh: ' + escapeHtml(item.changed_by || 'System') + '</span>' +
+                    '<span>Aksi: ' + escapeHtml(item.action || '-') + '</span>' +
+                    '</div>' +
+                    '<div class="embedded-audit-fields">' + fieldBadges + '</div>' +
+                    '</li>';
+            }
+
+            function trimAuditList(maxItems) {
+                const nodes = listEl.querySelectorAll('.embedded-audit-item');
+                if (nodes.length <= maxItems) return;
+                for (let idx = maxItems; idx < nodes.length; idx++) {
+                    nodes[idx].remove();
+                }
+            }
+
+            function prependAuditItems(items) {
+                if (!Array.isArray(items) || items.length < 1) return;
+
+                const emptyEl = document.getElementById('embedded-audit-empty');
+                if (emptyEl) {
+                    emptyEl.remove();
+                }
+
+                items.forEach(function(item) {
+                    listEl.insertAdjacentHTML('afterbegin', renderAuditItem(item));
+                    const rowId = Number(item.id || 0);
+                    if (rowId > lastAuditId) {
+                        lastAuditId = rowId;
+                    }
+                });
+
+                panel.setAttribute('data-last-audit-id', String(lastAuditId));
+                trimAuditList(30);
+            }
+
+            function pollAuditFeed() {
+                fetch('actions/audit-feed.php?since_id=' + encodeURIComponent(String(lastAuditId)), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Audit feed request gagal');
+                        }
+                        return response.json();
+                    })
+                    .then(function(payload) {
+                        if (!payload || payload.success !== true) {
+                            return;
+                        }
+                        if (Array.isArray(payload.rows) && payload.rows.length > 0) {
+                            prependAuditItems(payload.rows);
+                        }
+                    })
+                    .catch(function() {
+                    });
+            }
+
+            window.setInterval(pollAuditFeed, 15000);
         })();
     </script>
 </body>

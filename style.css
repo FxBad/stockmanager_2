@@ -3943,6 +3943,106 @@ table th i {
 	color: #b91c1c;
 }
 
+.embedded-audit-panel {
+	margin-bottom: 14px;
+	padding: 12px;
+	border: 1px solid rgba(58, 90, 64, 0.18);
+	border-radius: 10px;
+	background: #ffffff;
+	box-shadow: 0 4px 12px rgba(58, 90, 64, 0.08);
+}
+
+.embedded-audit-header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.embedded-audit-header h3 {
+	margin: 0;
+	font-size: 15px;
+	color: var(--brunswick-green);
+}
+
+.embedded-audit-subtitle {
+	font-size: 12px;
+	color: #6b7280;
+}
+
+.embedded-audit-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 8px;
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+.embedded-audit-item {
+	border: 1px solid rgba(58, 90, 64, 0.15);
+	border-radius: 8px;
+	padding: 8px 10px;
+	background: #f9fbf8;
+}
+
+.embedded-audit-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 4px;
+}
+
+.embedded-audit-top strong {
+	font-size: 13px;
+	color: var(--brunswick-green);
+}
+
+.embedded-audit-time {
+	font-size: 12px;
+	color: #6b7280;
+	white-space: nowrap;
+}
+
+.embedded-audit-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	font-size: 12px;
+	color: #4b5563;
+	margin-bottom: 6px;
+}
+
+.embedded-audit-fields {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.embedded-audit-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--hunter-green);
+	background: rgba(163, 177, 138, 0.25);
+}
+
+.embedded-audit-empty {
+	padding: 8px 10px;
+	font-size: 13px;
+	color: #6b7280;
+	border: 1px dashed rgba(58, 90, 64, 0.18);
+	border-radius: 8px;
+	background: #fbfdfb;
+}
+
 .cell-inline-error.server-validation {
 	font-weight: 600;
 }
@@ -4068,5 +4168,14 @@ body.update-stock-ui-locked nav .menu-icon {
 
 	.cell-inline-error {
 		font-size: 11px;
+	}
+
+	.embedded-audit-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.embedded-audit-list {
+		max-height: 220px;
 	}
 }
