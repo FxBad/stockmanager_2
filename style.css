@@ -3731,6 +3731,39 @@ table th i {
 	justify-content: center;
 }
 
+.batch-save-sticky {
+	position: sticky;
+	bottom: 12px;
+	margin-top: 16px;
+	padding: 12px;
+	border: 1px solid rgba(58, 90, 64, 0.16);
+	border-radius: 10px;
+	background: #ffffff;
+	box-shadow: 0 6px 18px rgba(58, 90, 64, 0.12);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	z-index: 4;
+}
+
+.batch-save-summary {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--brunswick-green);
+}
+
+.batch-save-btn {
+	min-width: 240px;
+}
+
+.batch-save-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: none;
+}
+
 .item-name-wrap {
 	display: inline-flex;
 	align-items: center;
@@ -3774,6 +3807,23 @@ tr.is-dirty td[data-label="Nama Barang"] .row-dirty-indicator {
 		width: auto;
 		flex-direction: row;
 		align-items: center;
+	}
+
+	.batch-save-sticky {
+		bottom: 8px;
+		padding: 10px;
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.batch-save-summary {
+		text-align: center;
+		font-size: 13px;
+	}
+
+	.batch-save-btn {
+		min-width: 0;
+		width: 100%;
 	}
 
 	.row-dirty-indicator {

@@ -352,7 +352,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </select>
                 <span id="filter-count"></span>
             </div>
-            <form method="POST" action="">
+            <form method="POST" action="" id="update-stock-form">
                 <table>
                     <thead>
                         <tr>
@@ -409,15 +409,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <span id="total_<?php echo $item['id']; ?>"><?php echo ($isFieldUser ? $item['field_stock'] : $totalStock); ?></span>
                                     </td>
                                 <?php endif; ?>
-                                <td data-label="Aksi">
-                                    <div class="row-action-wrap">
-                                        <button type="button" class="btn-save-row" data-item-id="<?php echo $item['id']; ?>">Save</button>
-                                    </div>
-                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                <div class="batch-save-sticky" role="status" aria-live="polite">
+                    <div class="batch-save-summary" id="batch-save-summary">
+                        0 item berubah • 0 field diubah
+                    </div>
+                    <button type="submit" class="btn-submit batch-save-btn" id="batch-save-btn" disabled data-default-text="Simpan Semua Perubahan (0)">
+                        Simpan Semua Perubahan (0)
+                    </button>
+                </div>
                 <noscript>
                     <div class="form-actions">
                         <button type="submit" class="btn-submit">Simpan Semua Perubahan</button>

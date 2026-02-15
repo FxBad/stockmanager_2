@@ -54,13 +54,27 @@ document.addEventListener("DOMContentLoaded", function () {
 	const pageTitle = document.querySelector(".main-title h2");
 	if (!pageTitle || !/Perbarui/i.test(pageTitle.textContent)) return;
 
-	const form = document.querySelector(".table-container form");
+	const form = document.getElementById("update-stock-form");
 	if (!form) return;
 
 	form.addEventListener("submit", function (e) {
 		e.preventDefault();
 
+		const dirtySummary = getDirtySummary();
+		if (dirtySummary.rowCount < 1) {
+			showModal({
+				title: "Info",
+				message: "Belum ada perubahan data untuk disimpan.",
+				type: "info",
+				okText: "OK",
+			});
+			return;
+		}
+
 		const submitBtn = this.querySelector('[type="submit"]');
+		const defaultText = submitBtn
+			? submitBtn.getAttribute("data-default-text") || submitBtn.textContent
+			: "Simpan Semua Perubahan";
 		if (submitBtn) {
 			submitBtn.disabled = true;
 			submitBtn.innerHTML =
@@ -95,16 +109,40 @@ document.addEventListener("DOMContentLoaded", function () {
 			.then((data) => {
 				if (submitBtn) {
 					submitBtn.disabled = false;
-					submitBtn.innerHTML = "Perbarui Stok";
+					submitBtn.innerHTML = defaultText;
 				}
 
-				const container =
-					document.querySelector(".main-container") || document.body;
-
 				if (data && data.success) {
+					if (Array.isArray(data.updated)) {
+						data.updated.forEach((it) => {
+							const itemId = String(it.id);
+							const fieldEl = document.getElementById(
+								"field_" + itemId,
+							);
+							const levelEl = document.getElementById(
+								"level_" + itemId,
+							);
+							if (fieldEl) fieldEl.value = it.field_stock;
+							if (
+								levelEl &&
+								Object.prototype.hasOwnProperty.call(it, "level")
+							) {
+								levelEl.value = it.level === null ? "" : it.level;
+							}
+							try {
+								updateTotal(itemId);
+							} catch (e) {}
+						});
+					}
+
+					persistAllRowOriginalValues();
+					updateBatchSaveSummary();
+
 					showModal({
 						title: "Berhasil",
-						message: data.message || "Stock quantities updated",
+						message:
+							data.message ||
+							"Perubahan stok berhasil disinkronkan",
 						type: "success",
 						okText: "OK",
 					});
@@ -123,7 +161,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			.catch((err) => {
 				if (submitBtn) {
 					submitBtn.disabled = false;
-					submitBtn.innerHTML = "Perbarui Stok";
+					submitBtn.innerHTML = defaultText;
 				}
 				showModal({
 					title: "Gagal",
@@ -162,6 +200,7 @@ function refreshRowDirtyState(itemId) {
 	const dirty = isControlDirty(fieldEl) || isControlDirty(levelEl);
 
 	row.classList.toggle("is-dirty", dirty);
+	updateBatchSaveSummary();
 }
 
 function persistRowOriginalValues(itemId) {
@@ -170,6 +209,61 @@ function persistRowOriginalValues(itemId) {
 
 	if (fieldEl) fieldEl.dataset.originalValue = fieldEl.value;
 	if (levelEl) levelEl.dataset.originalValue = levelEl.value;
+	updateBatchSaveSummary();
+}
+
+function persistAllRowOriginalValues() {
+	const rows = document.querySelectorAll("tr[data-item-id]");
+	rows.forEach((row) => {
+		const itemId = row.getAttribute("data-item-id");
+		if (!itemId) return;
+		persistRowOriginalValues(itemId);
+		refreshRowDirtyState(itemId);
+	});
+}
+
+function getDirtySummary() {
+	const rows = document.querySelectorAll("tr[data-item-id]");
+	let rowCount = 0;
+	let fieldCount = 0;
+
+	rows.forEach((row) => {
+		const itemId = row.getAttribute("data-item-id");
+		if (!itemId) return;
+
+		const fieldEl = document.getElementById("field_" + itemId);
+		const levelEl = document.getElementById("level_" + itemId);
+		const fieldDirty = isControlDirty(fieldEl);
+		const levelDirty = isControlDirty(levelEl);
+
+		if (fieldDirty || levelDirty) {
+			rowCount += 1;
+			if (fieldDirty) fieldCount += 1;
+			if (levelDirty) fieldCount += 1;
+		}
+	});
+
+	return { rowCount, fieldCount };
+}
+
+function updateBatchSaveSummary() {
+	const summaryEl = document.getElementById("batch-save-summary");
+	const saveBtn = document.getElementById("batch-save-btn");
+	if (!summaryEl || !saveBtn) return;
+
+	const { rowCount, fieldCount } = getDirtySummary();
+	const rowLabel = rowCount === 1 ? "item berubah" : "item berubah";
+	const fieldLabel = fieldCount === 1 ? "field diubah" : "field diubah";
+	summaryEl.textContent =
+		rowCount + " " + rowLabel + " • " + fieldCount + " " + fieldLabel;
+
+	const buttonText =
+		rowCount > 0
+			? "Simpan Semua Perubahan (" + rowCount + ")"
+			: "Simpan Semua Perubahan (0)";
+	saveBtn.textContent = buttonText;
+	saveBtn.setAttribute("data-default-text", buttonText);
+	saveBtn.disabled = rowCount < 1;
 }
 
 function markRowDirtyByFieldId(fieldId) {
@@ -218,6 +312,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		refreshRowDirtyState(itemId);
 	});
+
+	updateBatchSaveSummary();
 });
 
 function incrementQty(fieldId) {
@@ -247,6 +343,8 @@ function decrementQty(fieldId) {
 // Form Submit Loading State
 document.querySelectorAll("form").forEach((form) => {
 	form.addEventListener("submit", function (e) {
+		if (this.id === "update-stock-form") return;
+
 		const submitBtn = this.querySelector('[type="submit"]');
 		if (submitBtn) {
 			// Delay disabling so the browser includes the button's name/value
@@ -551,109 +649,6 @@ document.addEventListener("DOMContentLoaded", function () {
 		});
 	});
 
-	// Delegate click for inline save buttons on update-stock page
-	document.addEventListener("click", function (e) {
-		const btn = e.target.closest && e.target.closest(".btn-save-row");
-		if (!btn) return;
-
-		const itemId = btn.getAttribute("data-item-id");
-		if (!itemId) return;
-
-		// find inputs for this row
-		const fieldEl = document.getElementById("field_" + itemId);
-		const levelEl = document.getElementById("level_" + itemId);
-
-		const fd = new FormData();
-		fd.append("field_stock[" + itemId + "]", fieldEl ? fieldEl.value : "0");
-		if (levelEl) fd.append("level[" + itemId + "]", levelEl.value);
-
-		// Mark a visible indicator
-		const origText = btn.textContent;
-		btn.disabled = true;
-		btn.textContent = "Saving...";
-
-		fetch(window.location.pathname, {
-			method: "POST",
-			body: fd,
-			headers: { "X-Requested-With": "XMLHttpRequest" },
-		})
-			.then((r) =>
-				r.text().then((txt) => {
-					try {
-						return JSON.parse(txt);
-					} catch (e) {
-						console.warn(
-							"Invalid JSON response (inline-save):",
-							txt,
-						);
-						return { success: false, message: txt };
-					}
-				}),
-			)
-			.then((data) => {
-				btn.disabled = false;
-				btn.textContent = origText;
-
-				const container =
-					document.querySelector(".main-container") || document.body;
-				if (data && data.success) {
-					// find updated item in response (server returns updated array)
-					if (Array.isArray(data.updated)) {
-						const it = data.updated.find(
-							(x) => String(x.id) === String(itemId),
-						);
-						if (it) {
-							if (fieldEl) fieldEl.value = it.field_stock;
-							if (
-								levelEl &&
-								Object.prototype.hasOwnProperty.call(
-									it,
-									"level",
-								)
-							) {
-								levelEl.value =
-									it.level === null ? "" : it.level;
-							}
-
-							try {
-								updateTotal(itemId);
-							} catch (e) {}
-						}
-					}
-
-					persistRowOriginalValues(itemId);
-					refreshRowDirtyState(itemId);
-
-					showModal({
-						title: "Berhasil",
-						message: data.message || "Stok berhasil diperbarui",
-						type: "success",
-						okText: "OK",
-					});
-				} else {
-					showModal({
-						title: "Gagal",
-						message:
-							data && data.message
-								? data.message
-								: "Pembaruan gagal",
-						type: "error",
-						okText: "OK",
-					});
-				}
-			})
-			.catch((err) => {
-				btn.disabled = false;
-				btn.textContent = origText;
-				showModal({
-					title: "Gagal",
-					message:
-						err && err.message ? err.message : "Kesalahan server",
-					type: "error",
-					okText: "OK",
-				});
-			});
-	});
 });
 
 // Custom Modal Utility
