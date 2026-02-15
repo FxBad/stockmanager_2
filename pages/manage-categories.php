@@ -12,6 +12,7 @@ require_once __DIR__ . '/../functions.php';
 
 $message = '';
 $modalToOpen = '';
+$searchKeyword = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
 $addFormState = [
     'name' => '',
     'display_order' => 0,
@@ -145,6 +146,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $message = '<div class="alert error">Kategori tidak ditemukan atau sudah terhapus.</div>';
             }
+        } elseif ($action === 'sync_categories') {
+            $pdo->beginTransaction();
+
+            $stmtCategories = $pdo->query('SELECT name FROM item_categories');
+            $masterCategories = $stmtCategories->fetchAll(PDO::FETCH_COLUMN);
+
+            $normalizedMap = [];
+            foreach ($masterCategories as $categoryName) {
+                $canonicalName = trim((string)$categoryName);
+                if ($canonicalName === '') {
+                    continue;
+                }
+                $normalizedMap[strtolower($canonicalName)] = $canonicalName;
+            }
+
+            $stmtItems = $pdo->query('SELECT DISTINCT category FROM items WHERE category IS NOT NULL AND category <> ""');
+            $itemCategories = $stmtItems->fetchAll(PDO::FETCH_COLUMN);
+
+            $syncCount = 0;
+            foreach ($itemCategories as $itemCategory) {
+                $rawName = trim((string)$itemCategory);
+                if ($rawName === '') {
+                    continue;
+                }
+
+                $normalizedKey = strtolower($rawName);
+                if (!isset($normalizedMap[$normalizedKey])) {
+                    continue;
+                }
+
+                $targetName = $normalizedMap[$normalizedKey];
+                if ($targetName === $rawName) {
+                    continue;
+                }
+
+                $stmtSync = $pdo->prepare('UPDATE items SET category = :target_name WHERE category = :source_name');
+                $stmtSync->execute([
+                    ':target_name' => $targetName,
+                    ':source_name' => $rawName,
+                ]);
+
+                $syncCount += (int)$stmtSync->rowCount();
+            }
+
+            $pdo->commit();
+            $message = '<div class="alert success">Sinkronisasi selesai. ' . $syncCount . ' data barang diperbarui.</div>';
         } else {
             throw new Exception('Aksi tidak dikenali.');
         }
@@ -200,29 +247,186 @@ try {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <style>
+        .category-action-hub {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: var(--box-shadow);
+        }
+
+        .category-action-hub__title {
+            min-width: 0;
+        }
+
+        .category-action-hub__title h2 {
+            margin: 0;
+            color: var(--brunswick-green);
+            font-size: 24px;
+            line-height: 1.2;
+        }
+
+        .category-action-hub__title p {
+            margin: 6px 0 0;
+            color: var(--hunter-green);
+            font-size: 0.92rem;
+            opacity: 0.9;
+        }
+
+        .category-action-hub__controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: nowrap;
+        }
+
+        .category-quick-search {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px;
+            min-width: 220px;
+            height: 42px;
+            border: 1px solid #d6dbd2;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .category-quick-search i {
+            color: var(--fern-green);
+            font-size: 1.05rem;
+        }
+
+        .category-quick-search input {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--brunswick-green);
+            font-size: 0.94rem;
+        }
+
+        .btn-modal-sync {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid var(--fern-green);
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 10px 14px;
+            background-color: #fff;
+            color: var(--fern-green);
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-modal-sync:hover {
+            background-color: var(--sage);
+            border-color: var(--sage);
+            color: var(--brunswick-green);
+        }
+
+        .btn-modal-sync:disabled {
+            cursor: wait;
+            opacity: 0.75;
+        }
+
+        .table-subinfo {
+            margin: 6px 0 0;
+            color: var(--hunter-green);
+            font-size: 0.88rem;
+            min-height: 20px;
+        }
+
+        @media screen and (max-width: 900px) {
+            .category-action-hub {
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+
+            .category-action-hub__controls {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .category-quick-search {
+                flex: 1 1 260px;
+            }
+        }
+
+        @media screen and (max-width: 420px) {
+            .category-action-hub {
+                padding: 12px;
+            }
+
+            .category-action-hub__title h2 {
+                font-size: 1.25rem;
+            }
+
+            .category-action-hub__title p {
+                font-size: 0.85rem;
+            }
+
+            .btn-modal-sync,
+            .btn-modal-add {
+                min-height: 42px;
+            }
+
+            .category-quick-search {
+                min-width: 100%;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <?php include __DIR__ . '/../shared/nav.php'; ?>
 
     <main class="main-container">
-        <div class="main-title">
-            <h2>Kelola Kategori</h2>
+        <div class="category-action-hub">
+            <div class="category-action-hub__title">
+                <h2>Kelola Kategori</h2>
+                <p>Kelompokkan produk dengan struktur kategori yang rapi dan sinkron untuk menjaga konsistensi data barang.</p>
+            </div>
+
+            <div class="category-action-hub__controls">
+                <label class="category-quick-search" for="category-quick-search-input" aria-label="Cari kategori">
+                    <i class='bx bx-search'></i>
+                    <input
+                        type="search"
+                        id="category-quick-search-input"
+                        placeholder="Cari nama atau status kategori..."
+                        value="<?php echo htmlspecialchars($searchKeyword); ?>"
+                        autocomplete="off">
+                </label>
+
+                <form method="POST" id="sync-category-form" class="action-form" onsubmit="return triggerSyncState();">
+                    <input type="hidden" name="action" value="sync_categories">
+                    <button type="submit" class="btn-modal-sync" id="sync-category-btn">
+                        <i class='bx bx-refresh'></i> Sinkronisasi
+                    </button>
+                </form>
+
+                <button type="button" class="btn-modal-add" onclick="openAddCategoryModal()">
+                    <i class='bx bx-plus'></i> Tambah Kategori
+                </button>
+            </div>
         </div>
 
         <?php if ($message): ?>
             <?php echo $message; ?>
         <?php endif; ?>
 
-        <div class="modal-header-actions">
-            <button type="button" class="btn-modal-add" onclick="openAddCategoryModal()">
-                <i class='bx bx-plus'></i> Tambah Kategori
-            </button>
-        </div>
-
         <div class="table-container">
             <div class="table-header">
                 <h3>Master Data Kategori</h3>
+                <p class="table-subinfo" id="category-search-info"></p>
             </div>
 
             <table>
@@ -236,7 +440,7 @@ try {
                         <th>Aksi</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="category-table-body">
                     <?php foreach ($categories as $category): ?>
                         <?php
                         $categoryId = isset($category['id']) ? (int)$category['id'] : 0;
@@ -359,6 +563,15 @@ try {
 
     <script src="script.js?<?php echo getVersion(); ?>"></script>
     <script>
+        function triggerSyncState() {
+            const button = document.getElementById('sync-category-btn');
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> Sinkronisasi...";
+            }
+            return true;
+        }
+
         function openAddCategoryModal() {
             const form = document.getElementById('add-category-form');
             if (form) {
@@ -405,6 +618,51 @@ try {
                 closeCategoryModal('edit-category-modal');
             }
         });
+
+        (function() {
+            const searchInput = document.getElementById('category-quick-search-input');
+            const tableBody = document.getElementById('category-table-body');
+            const infoEl = document.getElementById('category-search-info');
+            if (!searchInput || !tableBody || !infoEl) {
+                return;
+            }
+
+            const rows = Array.from(tableBody.querySelectorAll('tr'));
+            const dataRows = rows.filter(function(row) {
+                return row.querySelector('td[data-label="Nama"]') !== null;
+            });
+
+            function renderSearchResultInfo(total, visible, keyword) {
+                if (!keyword) {
+                    infoEl.textContent = 'Menampilkan ' + total + ' kategori.';
+                    return;
+                }
+                infoEl.textContent = 'Ditemukan ' + visible + ' dari ' + total + ' kategori untuk "' + keyword + '".';
+            }
+
+            function applyQuickSearch() {
+                const keyword = (searchInput.value || '').trim().toLowerCase();
+                let visibleCount = 0;
+
+                dataRows.forEach(function(row) {
+                    const nameText = (row.querySelector('td[data-label="Nama"]')?.textContent || '').toLowerCase();
+                    const statusText = (row.querySelector('td[data-label="Status"]')?.textContent || '').toLowerCase();
+                    const orderText = (row.querySelector('td[data-label="Urutan"]')?.textContent || '').toLowerCase();
+                    const haystack = (nameText + ' ' + statusText + ' ' + orderText).trim();
+                    const isVisible = keyword === '' || haystack.includes(keyword);
+
+                    row.style.display = isVisible ? '' : 'none';
+                    if (isVisible) {
+                        visibleCount += 1;
+                    }
+                });
+
+                renderSearchResultInfo(dataRows.length, visibleCount, keyword);
+            }
+
+            searchInput.addEventListener('input', applyQuickSearch);
+            applyQuickSearch();
+        })();
 
         (function() {
             const modalToOpen = <?php echo json_encode($modalToOpen); ?>;
