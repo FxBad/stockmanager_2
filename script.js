@@ -57,6 +57,24 @@ document.addEventListener("DOMContentLoaded", function () {
 	const form = document.getElementById("update-stock-form");
 	if (!form) return;
 
+	document.addEventListener(
+		"click",
+		function (event) {
+			if (!document.body.classList.contains("update-stock-ui-locked")) {
+				return;
+			}
+
+			const navControl = event.target.closest(
+				"nav .nav-link, nav .menu-icon",
+			);
+			if (!navControl) return;
+
+			event.preventDefault();
+			event.stopPropagation();
+		},
+		true,
+	);
+
 	form.addEventListener("submit", function (e) {
 		e.preventDefault();
 
@@ -106,6 +124,8 @@ document.addEventListener("DOMContentLoaded", function () {
 			fabBtn.classList.add("is-loading");
 			fabBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i>';
 		}
+
+		setUpdateStockUiLock(true);
 
 		const formData = new FormData(this);
 
@@ -210,6 +230,9 @@ document.addEventListener("DOMContentLoaded", function () {
 					type: "error",
 					okText: "OK",
 				});
+			})
+			.finally(() => {
+				setUpdateStockUiLock(false);
 			});
 	});
 });
@@ -345,6 +368,69 @@ function validateUpdateStockForm() {
 	});
 
 	return { isValid, firstInvalidControl };
+}
+
+function getDirtyRows() {
+	return Array.from(
+		document.querySelectorAll("tr[data-item-id].is-dirty"),
+	);
+}
+
+function setControlLockedState(control, locked) {
+	if (!control) return;
+
+	if (locked) {
+		if (!Object.prototype.hasOwnProperty.call(control.dataset, "lockPrevDisabled")) {
+			control.dataset.lockPrevDisabled = control.disabled ? "1" : "0";
+		}
+		control.disabled = true;
+		return;
+	}
+
+	const prev = control.dataset.lockPrevDisabled;
+	if (prev === "1") {
+		control.disabled = true;
+	} else {
+		control.disabled = false;
+	}
+	delete control.dataset.lockPrevDisabled;
+}
+
+function lockRowForAsync(row, locked) {
+	if (!row) return;
+
+	if (locked) {
+		row.classList.add("is-locked");
+		row.setAttribute("aria-busy", "true");
+		row.setAttribute("data-async-lock", "1");
+	} else {
+		row.classList.remove("is-locked");
+		row.removeAttribute("aria-busy");
+		row.removeAttribute("data-async-lock");
+	}
+
+	const controls = row.querySelectorAll("input, button, select, textarea");
+	controls.forEach((control) => {
+		setControlLockedState(control, locked);
+	});
+}
+
+function setUpdateStockUiLock(locked) {
+	const body = document.body;
+	if (!body) return;
+
+	if (locked) {
+		getDirtyRows().forEach((row) => lockRowForAsync(row, true));
+		body.classList.add("update-stock-ui-locked");
+		setControlLockedState(document.getElementById("category-filter"), true);
+		return;
+	}
+
+	document
+		.querySelectorAll('tr[data-item-id][data-async-lock="1"]')
+		.forEach((row) => lockRowForAsync(row, false));
+	body.classList.remove("update-stock-ui-locked");
+	setControlLockedState(document.getElementById("category-filter"), false);
 }
 
 function refreshRowDirtyState(itemId) {

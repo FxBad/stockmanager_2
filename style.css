@@ -3822,6 +3822,20 @@ tr.is-dirty td[data-label="Nama Barang"] .row-dirty-indicator {
 	opacity: 1;
 }
 
+tr.is-locked {
+	opacity: 0.72;
+}
+
+tr.is-locked td {
+	cursor: wait;
+}
+
+body.update-stock-ui-locked nav .nav-link,
+body.update-stock-ui-locked nav .menu-icon {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
 @media screen and (max-width: 420px) {
 	.row-action-wrap {
 		width: auto;
