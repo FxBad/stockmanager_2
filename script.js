@@ -90,6 +90,8 @@ function runRowAutoSave(itemId) {
 	const isDirty = isControlDirty(fieldEl) || isControlDirty(levelEl);
 	if (!isDirty) return;
 
+	clearServerValidationErrorsForRow(itemId);
+
 	if (!validateRowControls(itemId)) {
 		markRowsAsFailed([itemId]);
 		updateBatchSaveSummary();
@@ -152,6 +154,10 @@ function runRowAutoSave(itemId) {
 				refreshRowDirtyState(itemId);
 				markRowsAsSaved([itemId]);
 				return;
+			}
+
+			if (data && data.errors && typeof data.errors === "object") {
+				applyServerValidationErrors(data.errors);
 			}
 
 			markRowsAsFailed([itemId]);
@@ -217,6 +223,8 @@ document.addEventListener("DOMContentLoaded", function () {
 			});
 			return;
 		}
+
+		clearServerValidationErrors();
 
 		const validationResult = validateUpdateStockForm();
 		if (!validationResult.isValid) {
@@ -325,6 +333,26 @@ document.addEventListener("DOMContentLoaded", function () {
 						type: "success",
 						okText: "OK",
 					});
+				} else if (
+					data &&
+					data.errors &&
+					typeof data.errors === "object"
+				) {
+					const firstInvalidControl = applyServerValidationErrors(
+						data.errors,
+					);
+					markRowsAsFailed(Object.keys(data.errors));
+					if (firstInvalidControl) {
+						firstInvalidControl.focus();
+					}
+					showModal({
+						title: "Validasi Server",
+						message:
+							data.message ||
+							"Terdapat data tidak valid pada beberapa baris.",
+						type: "warning",
+						okText: "OK",
+					});
 				} else {
 					markRowsAsFailed(pendingRowIds);
 					showModal({
@@ -418,6 +446,101 @@ function setControlInlineError(control, message) {
 	errorEl.setAttribute("data-for", control.id || "");
 	errorEl.textContent = message;
 	cell.appendChild(errorEl);
+}
+
+function clearServerValidationErrorsForRow(itemId) {
+	const row = getRowByItemId(itemId);
+	if (!row) return;
+
+	row.querySelectorAll(".cell-inline-error.server-validation").forEach((el) => {
+		el.remove();
+	});
+
+	const fieldEl = document.getElementById("field_" + itemId);
+	const levelEl = document.getElementById("level_" + itemId);
+
+	[fieldEl, levelEl].forEach((control) => {
+		if (!control) return;
+		if (control.dataset.serverValidationError === "1") {
+			clearControlInlineError(control);
+			delete control.dataset.serverValidationError;
+		}
+	});
+}
+
+function clearServerValidationErrors() {
+	document.querySelectorAll("tr[data-item-id]").forEach((row) => {
+		const itemId = row.getAttribute("data-item-id");
+		if (!itemId) return;
+		clearServerValidationErrorsForRow(itemId);
+	});
+}
+
+function setServerValidationError(control, message) {
+	if (!control) return;
+	setControlInlineError(control, message);
+	control.dataset.serverValidationError = "1";
+
+	const cell = getControlCell(control);
+	if (!cell) return;
+	const id = control.id || "";
+	const errorEl = cell.querySelector(
+		'.cell-inline-error[data-for="' + id + '"]',
+	);
+	if (errorEl) {
+		errorEl.classList.add("server-validation");
+	}
+}
+
+function setRowServerValidationError(itemId, message) {
+	const row = getRowByItemId(itemId);
+	if (!row) return;
+
+	const targetCell = row.querySelector('td[data-label="Nama Barang"]');
+	if (!targetCell) return;
+
+	const errorEl = document.createElement("div");
+	errorEl.className =
+		"cell-inline-error server-validation server-validation-row";
+	errorEl.setAttribute("role", "alert");
+	errorEl.textContent = message;
+	targetCell.appendChild(errorEl);
+}
+
+function applyServerValidationErrors(errorsByItem) {
+	if (!errorsByItem || typeof errorsByItem !== "object") {
+		return null;
+	}
+
+	clearServerValidationErrors();
+
+	let firstInvalidControl = null;
+	Object.keys(errorsByItem).forEach((itemId) => {
+		const itemErrors = errorsByItem[itemId];
+		if (!itemErrors || typeof itemErrors !== "object") return;
+
+		if (itemErrors.field_stock) {
+			const control = document.getElementById("field_" + itemId);
+			if (control) {
+				setServerValidationError(control, String(itemErrors.field_stock));
+				if (!firstInvalidControl) firstInvalidControl = control;
+			}
+		}
+
+		if (itemErrors.level) {
+			const control = document.getElementById("level_" + itemId);
+			if (control) {
+				setServerValidationError(control, String(itemErrors.level));
+				if (!firstInvalidControl) firstInvalidControl = control;
+			}
+		}
+
+		if (itemErrors._row) {
+			setRowServerValidationError(itemId, String(itemErrors._row));
+		}
+	});
+
+	return firstInvalidControl;
 }
 
 function isNonNegativeIntegerValue(rawValue, allowEmpty = false) {
@@ -746,10 +869,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		if (fieldEl) {
 			fieldEl.addEventListener("input", function () {
+				clearServerValidationErrorsForRow(itemId);
+				delete fieldEl.dataset.serverValidationError;
 				validateStockControl(fieldEl);
 				refreshRowDirtyState(itemId);
 			});
 			fieldEl.addEventListener("change", function () {
+				clearServerValidationErrorsForRow(itemId);
+				delete fieldEl.dataset.serverValidationError;
 				validateStockControl(fieldEl);
 				refreshRowDirtyState(itemId);
 			});
@@ -760,10 +887,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		if (levelEl) {
 			levelEl.addEventListener("input", function () {
+				clearServerValidationErrorsForRow(itemId);
+				delete levelEl.dataset.serverValidationError;
 				validateLevelControl(levelEl, itemId);
 				refreshRowDirtyState(itemId);
 			});
 			levelEl.addEventListener("change", function () {
+				clearServerValidationErrorsForRow(itemId);
+				delete levelEl.dataset.serverValidationError;
 				validateLevelControl(levelEl, itemId);
 				refreshRowDirtyState(itemId);
 			});

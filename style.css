@@ -3814,6 +3814,14 @@ table th i {
 	color: #b91c1c;
 }
 
+.cell-inline-error.server-validation {
+	font-weight: 600;
+}
+
+.cell-inline-error.server-validation-row {
+	margin-top: 6px;
+}
+
 tr.is-dirty {
 	background-color: #fffbeb;
 }

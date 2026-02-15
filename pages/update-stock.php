@@ -52,10 +52,62 @@ $schemaFlags = itemSchemaFlags();
 requireRole(['field', 'office', 'admin']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $isAjaxRequest = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    $responseErrors = [];
+    $processingItemId = null;
+
     try {
         // Basic POST validation
         if (!isset($_POST['field_stock']) || !is_array($_POST['field_stock'])) {
             throw new Exception('Invalid submission: missing field_stock data');
+        }
+
+        $normalizedInput = [];
+        foreach ($_POST['field_stock'] as $itemIdRaw => $fieldStockPost) {
+            $itemId = (int)$itemIdRaw;
+
+            if (!isset($itemsMap[$itemId])) {
+                $responseErrors[$itemId]['_row'] = 'Item tidak ditemukan atau tidak aktif.';
+                continue;
+            }
+
+            $orig = $itemsMap[$itemId];
+            $itemHasLevel = isset($orig['has_level']) ? (bool)$orig['has_level'] : false;
+
+            $fieldStockRaw = is_string($fieldStockPost) ? trim($fieldStockPost) : $fieldStockPost;
+            if (
+                $fieldStockRaw === '' ||
+                !is_scalar($fieldStockRaw) ||
+                !preg_match('/^\d+$/', (string)$fieldStockRaw)
+            ) {
+                $responseErrors[$itemId]['field_stock'] = 'Stok harus berupa bilangan bulat non-negatif.';
+            }
+
+            $levelValue = null;
+            if (isset($_POST['level'][$itemId]) && $_POST['level'][$itemId] !== '') {
+                $lvlRaw = is_string($_POST['level'][$itemId]) ? trim($_POST['level'][$itemId]) : $_POST['level'][$itemId];
+                if ($lvlRaw === '' || !is_scalar($lvlRaw) || !preg_match('/^\d+$/', (string)$lvlRaw)) {
+                    $responseErrors[$itemId]['level'] = 'Level harus berupa bilangan bulat non-negatif.';
+                } else {
+                    $levelValue = (int)$lvlRaw;
+                }
+            }
+
+            if (!$itemHasLevel && $levelValue !== null) {
+                $responseErrors[$itemId]['level'] = 'Level hanya berlaku untuk item dengan level aktif.';
+            }
+
+            if (!isset($responseErrors[$itemId])) {
+                $normalizedInput[$itemId] = [
+                    'field_stock' => (int)$fieldStockRaw,
+                    'level' => $levelValue,
+                    'item_has_level' => $itemHasLevel,
+                ];
+            }
+        }
+
+        if (!empty($responseErrors)) {
+            throw new InvalidArgumentException('Validasi gagal pada satu atau lebih baris.');
         }
 
         $pdo->beginTransaction();
@@ -91,39 +143,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Collect updated items for AJAX responses (single-row or multiple)
         $updatedItems = [];
 
-        foreach ($_POST['field_stock'] as $itemId => $fieldStockPost) {
-            $itemId = (int)$itemId;
+        foreach ($normalizedInput as $itemId => $inputRow) {
+            $processingItemId = (int)$itemId;
 
             // Ambil nilai awal dari map (cepat, tanpa SELECT per item)
             if (!isset($itemsMap[$itemId])) {
                 continue;
             }
             $orig = $itemsMap[$itemId];
-            $itemHasLevel = isset($orig['has_level']) ? (bool)$orig['has_level'] : false;
-
-            $fieldStockRaw = is_string($fieldStockPost) ? trim($fieldStockPost) : $fieldStockPost;
-            if (
-                $fieldStockRaw === '' ||
-                !is_scalar($fieldStockRaw) ||
-                !preg_match('/^\d+$/', (string)$fieldStockRaw)
-            ) {
-                throw new Exception('Invalid field_stock value for item ID ' . $itemId . '. Value must be a non-negative integer.');
-            }
-            $fieldStock = (int)$fieldStockRaw;
-
-            // Handle level input only for items with has_level = 1
-            $levelValue = null;
-            if (isset($_POST['level'][$itemId]) && $_POST['level'][$itemId] !== '') {
-                // Validate integer
-                $lvlRaw = $_POST['level'][$itemId];
-                if (!is_numeric($lvlRaw) || intval($lvlRaw) != $lvlRaw || intval($lvlRaw) < 0) {
-                    throw new Exception('Invalid level value for item ID ' . $itemId);
-                }
-                $levelValue = (int)$lvlRaw;
-            }
-            if (!$itemHasLevel && $levelValue !== null) {
-                throw new Exception('Level can only be set for items with has_level enabled (item ID ' . $itemId . ')');
-            }
+            $itemHasLevel = isset($inputRow['item_has_level']) ? (bool)$inputRow['item_has_level'] : (isset($orig['has_level']) ? (bool)$orig['has_level'] : false);
+            $fieldStock = isset($inputRow['field_stock']) ? (int)$inputRow['field_stock'] : 0;
+            $levelValue = array_key_exists('level', $inputRow) ? $inputRow['level'] : null;
 
             $effectiveLevel = ($levelValue !== null) ? $levelValue : (isset($orig['level']) ? $orig['level'] : null);
             $levelConversion = isset($orig['level_conversion']) ? (float)$orig['level_conversion'] : (float)$orig['unit_conversion'];
@@ -295,26 +325,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     } catch (PDOException $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($processingItemId !== null) {
+            $responseErrors[$processingItemId]['_row'] = 'Database error saat menyimpan baris ini.';
+        }
         $message = '<div class="alert error">DB Error: ' . htmlspecialchars($e->getMessage()) . '</div>';
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        if ($isAjaxRequest) {
             while (ob_get_level() > 0) ob_end_clean();
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'success' => false,
-                'message' => 'DB Error: ' . $e->getMessage()
+                'message' => 'DB Error: ' . $e->getMessage(),
+                'errors' => $responseErrors
             ]);
             exit;
         }
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($processingItemId !== null && !isset($responseErrors[$processingItemId])) {
+            $responseErrors[$processingItemId]['_row'] = $e->getMessage();
+        }
         $message = '<div class="alert error">Error: ' . htmlspecialchars($e->getMessage()) . '</div>';
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        if ($isAjaxRequest) {
             while (ob_get_level() > 0) ob_end_clean();
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Error: ' . $e->getMessage(),
+                'errors' => $responseErrors
             ]);
             exit;
         }
