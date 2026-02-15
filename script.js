@@ -907,6 +907,22 @@ document.addEventListener("DOMContentLoaded", function () {
 		resultCount.textContent = `${rowCount} item ditemukan`;
 	}
 
+	function resetFiltersAndRefresh() {
+		searchInput.value = "";
+		if (categoryFilter) {
+			categoryFilter.value = "";
+		}
+		if (statusFilter) {
+			statusFilter.value = "";
+		}
+
+		hideAutocomplete();
+		toggleClearButton();
+		renderActiveFilterChips();
+		updateTableRows();
+		searchInput.focus();
+	}
+
 	function renderActiveFilterChips() {
 		if (!activeFilterChips) return;
 
@@ -1142,21 +1158,17 @@ document.addEventListener("DOMContentLoaded", function () {
 		});
 	}
 
+	if (tableBody) {
+		tableBody.addEventListener("click", function (event) {
+			const resetBtn = event.target.closest(".empty-reset-btn");
+			if (!resetBtn) return;
+			resetFiltersAndRefresh();
+		});
+	}
+
 	if (resetFilterButton) {
 		resetFilterButton.addEventListener("click", function () {
-			searchInput.value = "";
-			if (categoryFilter) {
-				categoryFilter.value = "";
-			}
-			if (statusFilter) {
-				statusFilter.value = "";
-			}
-
-			hideAutocomplete();
-			toggleClearButton();
-			renderActiveFilterChips();
-			updateTableRows();
-			searchInput.focus();
+			resetFiltersAndRefresh();
 		});
 	}
 

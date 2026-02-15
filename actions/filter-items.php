@@ -80,6 +80,7 @@ if ($sortBy !== 'name') {
 
 $showSensitive = isRole('office') || isRole('admin');
 $colspan = $context === 'manage' ? 10 : ($showSensitive ? 8 : 7);
+$hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
 
 try {
     $stmt = $pdo->prepare($query);
@@ -91,7 +92,18 @@ try {
     if (empty($items)) {
 ?>
         <tr>
-            <td colspan="<?php echo $colspan; ?>" class="no-data"><?php echo $context === 'manage' ? 'Tidak ada barang' : 'Tidak ada barang ditemukan'; ?></td>
+            <td colspan="<?php echo $colspan; ?>" class="no-data">
+                <div class="empty-state">
+                    <?php if ($hasActiveFilter): ?>
+                        <p class="empty-state-title">Tidak ada barang yang cocok dengan filter saat ini</p>
+                        <p class="empty-state-desc">Coba ubah kata kunci pencarian, kategori, atau status agar data kembali muncul.</p>
+                        <button type="button" class="btn-filter empty-reset-btn">Reset Filter</button>
+                    <?php else: ?>
+                        <p class="empty-state-title"><?php echo $context === 'manage' ? 'Tidak ada barang' : 'Data barang belum tersedia'; ?></p>
+                        <p class="empty-state-desc"><?php echo $context === 'manage' ? 'Belum ada item yang tersedia pada daftar ini.' : 'Tambahkan data inventaris terlebih dahulu agar daftar stok dapat ditampilkan.'; ?></p>
+                    <?php endif; ?>
+                </div>
+            </td>
         </tr>
         <?php
     } else {

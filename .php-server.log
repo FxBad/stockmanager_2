@@ -287,3 +287,93 @@
 [Sun Feb 15 11:34:58 2026] [::1]:56133 Accepted
 [Sun Feb 15 11:34:58 2026] [::1]:56133 [200]: GET /script.js?v=1771130097
 [Sun Feb 15 11:34:58 2026] [::1]:56133 Closing
+[Sun Feb 15 11:36:47 2026] [::1]:63009 Accepted
+[Sun Feb 15 11:36:47 2026] [::1]:63009 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sun Feb 15 11:36:47 2026] [::1]:63009 Closing
+[Sun Feb 15 11:36:47 2026] [::1]:56137 Accepted
+[Sun Feb 15 11:36:47 2026] [::1]:56137 [200]: GET /
+[Sun Feb 15 11:36:47 2026] [::1]:56137 Closing
+[Sun Feb 15 11:36:47 2026] [::1]:63408 Accepted
+[Sun Feb 15 11:36:47 2026] [::1]:63408 [200]: GET /style.css?v=1771130207
+[Sun Feb 15 11:36:47 2026] [::1]:63408 Closing
+[Sun Feb 15 11:36:47 2026] [::1]:59877 Accepted
+[Sun Feb 15 11:36:47 2026] [::1]:59877 [200]: GET /script.js?v=1771130207
+[Sun Feb 15 11:36:47 2026] [::1]:59877 Closing
+[Sun Feb 15 11:36:47 2026] [::1]:59878 Accepted
+[Sun Feb 15 11:36:47 2026] [::1]:59878 [404]: GET /transition.js - No such file or directory
+[Sun Feb 15 11:36:47 2026] [::1]:59878 Closing
+[Sun Feb 15 11:36:51 2026] [::1]:55021 Accepted
+[Sun Feb 15 11:36:51 2026] [::1]:55021 [200]: GET /view.php
+[Sun Feb 15 11:36:51 2026] [::1]:55021 Closing
+[Sun Feb 15 11:36:51 2026] [::1]:61222 Accepted
+[Sun Feb 15 11:36:51 2026] [::1]:61223 Accepted
+[Sun Feb 15 11:36:51 2026] [::1]:61222 [200]: GET /style.css?v=1771130211
+[Sun Feb 15 11:36:51 2026] [::1]:61223 [200]: GET /script.js?v=1771130211
+[Sun Feb 15 11:36:51 2026] [::1]:61222 Closing
+[Sun Feb 15 11:36:51 2026] [::1]:61223 Closing
+[Sun Feb 15 11:38:18 2026] [::1]:61600 Accepted
+[Sun Feb 15 11:38:18 2026] [::1]:61600 [200]: GET /update-stock.php
+[Sun Feb 15 11:38:18 2026] [::1]:61600 Closing
+[Sun Feb 15 11:38:18 2026] [::1]:50199 Accepted
+[Sun Feb 15 11:38:18 2026] [::1]:50199 [200]: GET /style.css?v=1771130298
+[Sun Feb 15 11:38:18 2026] [::1]:50199 Closing
+[Sun Feb 15 11:38:18 2026] [::1]:65341 Accepted
+[Sun Feb 15 11:38:18 2026] [::1]:65341 [200]: GET /script.js?v=1771130298
+[Sun Feb 15 11:38:18 2026] [::1]:65341 Closing
+[Sun Feb 15 11:38:18 2026] [::1]:56671 Accepted
+[Sun Feb 15 11:38:18 2026] [::1]:56671 [404]: GET /favicon.ico - No such file or directory
+[Sun Feb 15 11:38:18 2026] [::1]:56671 Closing
+[Sun Feb 15 11:38:35 2026] [::1]:53645 Accepted
+[Sun Feb 15 11:38:35 2026] [::1]:53645 [200]: GET /update-stock.php
+[Sun Feb 15 11:38:35 2026] [::1]:53645 Closing
+[Sun Feb 15 11:38:36 2026] [::1]:53235 Accepted
+[Sun Feb 15 11:38:36 2026] [::1]:53235 [200]: GET /style.css?v=1771130315
+[Sun Feb 15 11:38:36 2026] [::1]:53235 Closing
+[Sun Feb 15 11:38:36 2026] [::1]:50087 Accepted
+[Sun Feb 15 11:38:36 2026] [::1]:50087 [200]: GET /script.js?v=1771130315
+[Sun Feb 15 11:38:36 2026] [::1]:50087 Closing
+[Sun Feb 15 11:40:17 2026] [::1]:56427 Accepted
+[Sun Feb 15 11:40:17 2026] [::1]:56427 [200]: GET /view.php
+[Sun Feb 15 11:40:17 2026] [::1]:56427 Closing
+[Sun Feb 15 11:40:17 2026] [::1]:64699 Accepted
+[Sun Feb 15 11:40:17 2026] [::1]:64699 [200]: GET /style.css?v=1771130417
+[Sun Feb 15 11:40:17 2026] [::1]:64699 Closing
+[Sun Feb 15 11:40:17 2026] [::1]:64700 Accepted
+[Sun Feb 15 11:40:17 2026] [::1]:64700 [200]: GET /script.js?v=1771130417
+[Sun Feb 15 11:40:17 2026] [::1]:64700 Closing
+[Sun Feb 15 11:40:24 2026] [::1]:57885 Accepted
+[Sun Feb 15 11:40:24 2026] [::1]:57885 [200]: GET /actions/filter-items.php?search=a&category=&status=&sort=name&dir=asc&context=view
+[Sun Feb 15 11:40:24 2026] [::1]:57885 Closing
+[Sun Feb 15 11:40:24 2026] [::1]:51449 Accepted
+[Sun Feb 15 11:40:24 2026] [::1]:51449 [200]: GET /actions/filter-items.php?search=as&category=&status=&sort=name&dir=asc&context=view
+[Sun Feb 15 11:40:24 2026] [::1]:51449 Closing
+[Sun Feb 15 11:40:25 2026] [::1]:56105 Accepted
+[Sun Feb 15 11:40:25 2026] [::1]:56105 [200]: GET /actions/autocomplete-items.php?term=as
+[Sun Feb 15 11:40:25 2026] [::1]:56105 Closing
+[Sun Feb 15 11:40:28 2026] [::1]:52983 Accepted
+[Sun Feb 15 11:40:28 2026] [::1]:52983 [200]: GET /actions/filter-items.php?search=&category=&status=&sort=name&dir=asc&context=view
+[Sun Feb 15 11:40:28 2026] [::1]:52983 Closing
+[Sun Feb 15 11:41:42 2026] [::1]:56892 Accepted
+[Sun Feb 15 11:41:42 2026] [::1]:56892 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sun Feb 15 11:41:42 2026] [::1]:56892 Closing
+[Sun Feb 15 11:41:42 2026] [::1]:59709 Accepted
+[Sun Feb 15 11:41:42 2026] [::1]:59709 [200]: GET /
+[Sun Feb 15 11:41:42 2026] [::1]:59709 Closing
+[Sun Feb 15 11:41:43 2026] [::1]:61876 Accepted
+[Sun Feb 15 11:41:43 2026] [::1]:61876 [200]: GET /style.css?v=1771130502
+[Sun Feb 15 11:41:43 2026] [::1]:61876 Closing
+[Sun Feb 15 11:41:43 2026] [::1]:49704 Accepted
+[Sun Feb 15 11:41:43 2026] [::1]:49704 [200]: GET /script.js?v=1771130502
+[Sun Feb 15 11:41:43 2026] [::1]:49704 Closing
+[Sun Feb 15 11:41:43 2026] [::1]:49713 Accepted
+[Sun Feb 15 11:41:43 2026] [::1]:49713 [404]: GET /transition.js - No such file or directory
+[Sun Feb 15 11:41:43 2026] [::1]:49713 Closing
+[Sun Feb 15 11:41:48 2026] [::1]:54045 Accepted
+[Sun Feb 15 11:41:48 2026] [::1]:54045 [200]: GET /view.php
+[Sun Feb 15 11:41:48 2026] [::1]:54045 Closing
+[Sun Feb 15 11:41:48 2026] [::1]:54047 Accepted
+[Sun Feb 15 11:41:48 2026] [::1]:54047 [200]: GET /style.css?v=1771130508
+[Sun Feb 15 11:41:48 2026] [::1]:54047 Closing
+[Sun Feb 15 11:41:48 2026] [::1]:59712 Accepted
+[Sun Feb 15 11:41:48 2026] [::1]:59712 [200]: GET /script.js?v=1771130508
+[Sun Feb 15 11:41:48 2026] [::1]:59712 Closing
