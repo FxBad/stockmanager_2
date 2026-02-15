@@ -13,9 +13,20 @@ require_once __DIR__ . '/../functions.php';
 $categories = getItemCategories();
 
 // Initialize filters
-$category = isset($_GET['category']) ? $_GET['category'] : '';
-$status = isset($_GET['status']) ? $_GET['status'] : '';
-$search = isset($_GET['search']) ? $_GET['search'] : '';
+$category = isset($_GET['category']) ? trim((string)$_GET['category']) : '';
+$status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
+$search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
+
+$allowedPerPage = [10, 25, 50, 100];
+$perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 25;
+if (!in_array($perPage, $allowedPerPage, true)) {
+    $perPage = 25;
+}
+
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) {
+    $page = 1;
+}
 
 // Get sort parameter (default to 'name' if not specified)
 $sortBy = isset($_GET['sort']) ? $_GET['sort'] : 'name';
@@ -45,21 +56,44 @@ $query = "SELECT
        LEFT JOIN users u ON i.added_by = u.id
        LEFT JOIN users u2 ON i.updated_by = u2.id
     WHERE " . activeItemsWhereSql('i');
+
+$countQuery = "SELECT COUNT(*) FROM items i WHERE " . activeItemsWhereSql('i');
 $params = [];
 
 if ($category) {
     $query .= " AND i.category = ?";
+    $countQuery .= " AND i.category = ?";
     $params[] = $category;
 }
 
 if ($status) {
     $query .= " AND i.status = ?";
+    $countQuery .= " AND i.status = ?";
     $params[] = $status;
 }
 
 if ($search) {
     $query .= " AND i.name LIKE ?";
+    $countQuery .= " AND i.name LIKE ?";
     $params[] = "%$search%";
+}
+
+$totalItems = 0;
+$totalPages = 1;
+$offset = 0;
+
+try {
+    $countStmt = $pdo->prepare($countQuery);
+    $countStmt->execute($params);
+    $totalItems = (int)$countStmt->fetchColumn();
+
+    $totalPages = max(1, (int)ceil($totalItems / $perPage));
+    if ($page > $totalPages) {
+        $page = $totalPages;
+    }
+    $offset = ($page - 1) * $perPage;
+} catch (Exception $e) {
+    $items = [];
 }
 
 // PRIMARY SORT: by the selected column and direction
@@ -69,6 +103,34 @@ $query .= " ORDER BY i.{$sortBy} {$sortDir}";
 if ($sortBy !== 'name') {
     $query .= ", i.name ASC";
 }
+
+$query .= " LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
+
+$baseQueryParams = [
+    'search' => $search,
+    'category' => $category,
+    'status' => $status,
+    'sort' => $sortBy,
+    'dir' => strtolower($sortDir),
+    'per_page' => $perPage,
+];
+
+$buildQuery = function (array $overrides = []) use ($baseQueryParams): string {
+    $next = array_merge($baseQueryParams, $overrides);
+
+    foreach (['search', 'category', 'status'] as $optionalKey) {
+        if (!isset($next[$optionalKey]) || $next[$optionalKey] === '') {
+            unset($next[$optionalKey]);
+        }
+    }
+
+    if (isset($next['page']) && (int)$next['page'] <= 1) {
+        unset($next['page']);
+    }
+
+    $queryString = http_build_query($next);
+    return $queryString ? ('?' . $queryString) : '';
+};
 
 // Execute query with error handling
 try {
@@ -136,7 +198,7 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
         <div class="table-container">
             <!-- Search and Filter Section -->
             <div class="table-header">
-                <form method="GET" class="table-filters" data-filter-context="view" data-default-sort="name" data-default-dir="asc">
+                <form method="GET" class="table-filters" data-filter-context="view" data-default-sort="name" data-default-dir="asc" data-server-grid="1">
                     <div class="search-box">
                         <i class='bx bx-search'></i>
                         <input type="text" name="search" id="search-input" placeholder="Cari barang..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
@@ -145,6 +207,9 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
                     </div>
 
                     <div class="filter-group">
+                        <input type="hidden" name="sort" value="<?php echo htmlspecialchars((string)$sortBy); ?>">
+                        <input type="hidden" name="dir" value="<?php echo strtolower((string)$sortDir); ?>">
+                        <input type="hidden" name="page" id="filter-page-input" value="1">
                         <select name="category">
                             <option value="">Semua Kategori</option>
                             <?php foreach ($categories as $cat): ?>
@@ -162,13 +227,21 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
                             <option value="out-stock" <?php echo $status === 'out-stock' ? 'selected' : ''; ?>><?php echo translateStatus('out-stock', 'id'); ?></option>
                         </select>
 
+                        <select name="per_page" aria-label="Jumlah data per halaman">
+                            <?php foreach ($allowedPerPage as $size): ?>
+                                <option value="<?php echo $size; ?>" <?php echo $perPage === $size ? 'selected' : ''; ?>><?php echo $size; ?> / halaman</option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <button type="submit" class="btn-filter">Terapkan Filter</button>
+
                         <button type="button" id="reset-filter-btn" class="btn-filter">Reset Filter</button>
                     </div>
 
                     <div id="active-filter-chips" class="active-filter-chips" aria-live="polite"></div>
 
                     <div id="filter-result-count" class="filter-result-count" aria-live="polite">
-                        <?php echo count($items); ?> item ditemukan
+                        <?php echo number_format((int)$totalItems); ?> item ditemukan
                     </div>
                 </form>
             </div>
@@ -180,7 +253,11 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
                     <tr>
                         <!-- Sortable Item Name column -->
                         <th>
-                            <a href="?search=<?= urlencode($search) ?>&category=<?= urlencode($category) ?>&status=<?= urlencode($status) ?>&sort=name&dir=<?= ($sortBy === 'name' && $sortDir === 'ASC') ? 'desc' : 'asc' ?>" class="th-sort">
+                            <a href="<?php echo htmlspecialchars($buildQuery([
+                                            'sort' => 'name',
+                                            'dir' => ($sortBy === 'name' && $sortDir === 'ASC') ? 'desc' : 'asc',
+                                            'page' => 1
+                                        ])); ?>" class="th-sort">
                                 Nama Barang
                                 <?php if ($sortBy === 'name'): ?>
                                     <i class='bx bx-<?= $sortDir === 'ASC' ? 'up' : 'down' ?>-arrow-alt'></i>
@@ -192,7 +269,11 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
 
                         <!-- Sortable Category column -->
                         <th>
-                            <a href="?search=<?= urlencode($search) ?>&category=<?= urlencode($category) ?>&status=<?= urlencode($status) ?>&sort=category&dir=<?= ($sortBy === 'category' && $sortDir === 'ASC') ? 'desc' : 'asc' ?>" class="th-sort">
+                            <a href="<?php echo htmlspecialchars($buildQuery([
+                                            'sort' => 'category',
+                                            'dir' => ($sortBy === 'category' && $sortDir === 'ASC') ? 'desc' : 'asc',
+                                            'page' => 1
+                                        ])); ?>" class="th-sort">
                                 Kategori
                                 <?php if ($sortBy === 'category'): ?>
                                     <i class='bx bx-<?= $sortDir === 'ASC' ? 'up' : 'down' ?>-arrow-alt'></i>
@@ -213,7 +294,11 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
 
                         <!-- Sortable Last Updated column -->
                         <th>
-                            <a href="?search=<?= urlencode($search) ?>&category=<?= urlencode($category) ?>&status=<?= urlencode($status) ?>&sort=last_updated&dir=<?= ($sortBy === 'last_updated' && $sortDir === 'ASC') ? 'desc' : 'asc' ?>" class="th-sort">
+                            <a href="<?php echo htmlspecialchars($buildQuery([
+                                            'sort' => 'last_updated',
+                                            'dir' => ($sortBy === 'last_updated' && $sortDir === 'ASC') ? 'desc' : 'asc',
+                                            'page' => 1
+                                        ])); ?>" class="th-sort">
                                 Terakhir Diperbarui
                                 <?php if ($sortBy === 'last_updated'): ?>
                                     <i class='bx bx-<?= $sortDir === 'ASC' ? 'up' : 'down' ?>-arrow-alt'></i>
@@ -326,6 +411,24 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
                     <?php endif; ?>
                 </tbody>
             </table>
+
+            <div class="table-pagination" aria-label="Navigasi halaman">
+                <?php if ($page > 1): ?>
+                    <a class="btn-page" href="<?php echo htmlspecialchars($buildQuery(['page' => $page - 1])); ?>" aria-label="Halaman sebelumnya">&laquo; Sebelumnya</a>
+                <?php endif; ?>
+
+                <?php
+                $startPage = max(1, $page - 2);
+                $endPage = min($totalPages, $page + 2);
+                for ($pageNumber = $startPage; $pageNumber <= $endPage; $pageNumber++):
+                ?>
+                    <a class="btn-page <?php echo $pageNumber === $page ? 'active' : ''; ?>" href="<?php echo htmlspecialchars($buildQuery(['page' => $pageNumber])); ?>"><?php echo $pageNumber; ?></a>
+                <?php endfor; ?>
+
+                <?php if ($page < $totalPages): ?>
+                    <a class="btn-page" href="<?php echo htmlspecialchars($buildQuery(['page' => $page + 1])); ?>" aria-label="Halaman berikutnya">Berikutnya &raquo;</a>
+                <?php endif; ?>
+            </div>
         </div>
     </main>
     <script src="script.js?<?php echo getVersion(); ?>"></script>
