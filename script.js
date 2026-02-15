@@ -73,7 +73,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		const submitBtn = this.querySelector('[type="submit"]');
 		const defaultText = submitBtn
-			? submitBtn.getAttribute("data-default-text") || submitBtn.textContent
+			? submitBtn.getAttribute("data-default-text") ||
+				submitBtn.textContent
 			: "Simpan Semua Perubahan";
 		if (submitBtn) {
 			submitBtn.disabled = true;
@@ -125,9 +126,13 @@ document.addEventListener("DOMContentLoaded", function () {
 							if (fieldEl) fieldEl.value = it.field_stock;
 							if (
 								levelEl &&
-								Object.prototype.hasOwnProperty.call(it, "level")
+								Object.prototype.hasOwnProperty.call(
+									it,
+									"level",
+								)
 							) {
-								levelEl.value = it.level === null ? "" : it.level;
+								levelEl.value =
+									it.level === null ? "" : it.level;
 							}
 							try {
 								updateTotal(itemId);
@@ -648,7 +653,6 @@ document.addEventListener("DOMContentLoaded", function () {
 			},
 		});
 	});
-
 });
 
 // Custom Modal Utility
