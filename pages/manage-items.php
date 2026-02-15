@@ -222,6 +222,18 @@ $category = isset($_GET['category']) ? trim((string)$_GET['category']) : '';
 $status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
 $search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 
+$expandedRaw = isset($_GET['expanded']) ? trim((string)$_GET['expanded']) : '';
+$expandedRows = [];
+if ($expandedRaw !== '') {
+    foreach (explode(',', $expandedRaw) as $rawId) {
+        $parsedId = (int)trim($rawId);
+        if ($parsedId > 0) {
+            $expandedRows[$parsedId] = $parsedId;
+        }
+    }
+    $expandedRows = array_values($expandedRows);
+}
+
 $allowedPerPage = [10, 25, 50, 100];
 $perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 25;
 if (!in_array($perPage, $allowedPerPage, true)) {
@@ -312,12 +324,13 @@ $baseQueryParams = [
     'sort' => $sortBy,
     'dir' => strtolower($sortDir),
     'per_page' => $perPage,
+    'expanded' => !empty($expandedRows) ? implode(',', $expandedRows) : '',
 ];
 
 $buildQuery = function (array $overrides = []) use ($baseQueryParams): string {
     $next = array_merge($baseQueryParams, $overrides);
 
-    foreach (['search', 'category', 'status'] as $optionalKey) {
+    foreach (['search', 'category', 'status', 'expanded'] as $optionalKey) {
         if (!isset($next[$optionalKey]) || $next[$optionalKey] === '') {
             unset($next[$optionalKey]);
         }
@@ -391,6 +404,7 @@ try {
                         <input type="hidden" name="sort" value="<?php echo htmlspecialchars((string)$sortBy); ?>">
                         <input type="hidden" name="dir" value="<?php echo strtolower((string)$sortDir); ?>">
                         <input type="hidden" name="page" id="filter-page-input" value="1">
+                        <input type="hidden" name="expanded" id="expanded-state-input" value="<?php echo htmlspecialchars(!empty($expandedRows) ? implode(',', $expandedRows) : ''); ?>">
                         <select name="category">
                             <option value="">Semua Kategori</option>
                             <?php foreach ($categories as $cat): ?>
@@ -504,6 +518,8 @@ try {
                             'effective_stock' => $effectiveStock,
                             'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
                         ]);
+
+                        $isRowExpanded = in_array($id, $expandedRows, true);
                     ?>
                         <tr data-item-id="<?php echo $id; ?>" class="item-main-row">
                             <td data-label="Pilih" class="bulk-select-cell">
@@ -520,9 +536,9 @@ try {
                                     type="button"
                                     class="btn-page row-expand-toggle"
                                     data-target="details-row-<?php echo $id; ?>"
-                                    aria-expanded="false"
+                                    aria-expanded="<?php echo $isRowExpanded ? 'true' : 'false'; ?>"
                                     aria-controls="details-row-<?php echo $id; ?>">
-                                    Detail
+                                    <?php echo $isRowExpanded ? 'Tutup' : 'Detail'; ?>
                                 </button>
                             </td>
                             <td data-label="Aksi" class="actions">
@@ -569,7 +585,7 @@ try {
                                 <?php endif; ?>
                             </td>
                         </tr>
-                        <tr id="details-row-<?php echo $id; ?>" class="item-details-row" hidden>
+                        <tr id="details-row-<?php echo $id; ?>" class="item-details-row" <?php echo $isRowExpanded ? '' : 'hidden'; ?>>
                             <td colspan="10">
                                 <div class="item-details-grid">
                                     <div class="item-detail"><span class="label">Level (cm)</span><span class="value"><?php echo $hasLevel ? (isset($level) ? (int)$level : '-') : '-'; ?></span></div>
@@ -1009,7 +1025,39 @@ try {
 
         (function() {
             const toggles = document.querySelectorAll('.row-expand-toggle');
+            const expandedStateInput = document.getElementById('expanded-state-input');
             if (!toggles.length) return;
+
+            function getExpandedIdsFromDom() {
+                const expandedIds = [];
+                toggles.forEach(function(btn) {
+                    if (btn.getAttribute('aria-expanded') !== 'true') return;
+                    const targetId = btn.getAttribute('data-target') || '';
+                    const rowId = parseInt(String(targetId).replace('details-row-', ''), 10);
+                    if (!Number.isNaN(rowId) && rowId > 0) {
+                        expandedIds.push(rowId);
+                    }
+                });
+                return expandedIds;
+            }
+
+            function syncExpandedStateUrl() {
+                const expandedIds = getExpandedIdsFromDom();
+                const expandedValue = expandedIds.join(',');
+
+                if (expandedStateInput) {
+                    expandedStateInput.value = expandedValue;
+                }
+
+                const url = new URL(window.location.href);
+                if (expandedValue) {
+                    url.searchParams.set('expanded', expandedValue);
+                } else {
+                    url.searchParams.delete('expanded');
+                }
+
+                history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+            }
 
             toggles.forEach(function(toggleBtn) {
                 toggleBtn.addEventListener('click', function() {
@@ -1025,8 +1073,11 @@ try {
                     detailsRow.hidden = !nextExpanded;
                     toggleBtn.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
                     toggleBtn.textContent = nextExpanded ? 'Tutup' : 'Detail';
+                    syncExpandedStateUrl();
                 });
             });
+
+            syncExpandedStateUrl();
         })();
     </script>
 </body>

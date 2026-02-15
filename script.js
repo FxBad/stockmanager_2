@@ -1333,6 +1333,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	const pageInput = filterForm
 		? filterForm.querySelector('input[name="page"]')
 		: null;
+	const expandedStateInput = filterForm
+		? filterForm.querySelector('input[name="expanded"]')
+		: null;
 	const resetFilterButton = filterForm
 		? filterForm.querySelector("#reset-filter-btn")
 		: null;
@@ -1341,6 +1344,9 @@ document.addEventListener("DOMContentLoaded", function () {
 		: null;
 	const statusFilter = filterForm
 		? filterForm.querySelector('select[name="status"]')
+		: null;
+	const perPageFilter = filterForm
+		? filterForm.querySelector('select[name="per_page"]')
 		: null;
 	const activeFilterChips = document.getElementById("active-filter-chips");
 	const resultCount = document.getElementById("filter-result-count");
@@ -1464,28 +1470,32 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
 
 	function syncFilterQueryToUrl() {
+		if (!filterForm) return;
+
 		const url = new URL(window.location.href);
-		const nextSearch = searchInput.value.trim();
-		const nextCategory = categoryFilter ? categoryFilter.value : "";
-		const nextStatus = statusFilter ? statusFilter.value : "";
+		const formData = new FormData(filterForm);
+		const keys = [
+			"search",
+			"category",
+			"status",
+			"sort",
+			"dir",
+			"per_page",
+			"page",
+			"expanded",
+		];
 
-		if (nextSearch) {
-			url.searchParams.set("search", nextSearch);
-		} else {
-			url.searchParams.delete("search");
-		}
+		keys.forEach((key) => {
+			const rawValue = formData.get(key);
+			const value = (rawValue === null ? "" : String(rawValue)).trim();
 
-		if (nextCategory) {
-			url.searchParams.set("category", nextCategory);
-		} else {
-			url.searchParams.delete("category");
-		}
+			if (!value || (key === "page" && value === "1")) {
+				url.searchParams.delete(key);
+				return;
+			}
 
-		if (nextStatus) {
-			url.searchParams.set("status", nextStatus);
-		} else {
-			url.searchParams.delete("status");
-		}
+			url.searchParams.set(key, value);
+		});
 
 		history.replaceState(
 			null,
@@ -1515,10 +1525,14 @@ document.addEventListener("DOMContentLoaded", function () {
 		if (pageInput) {
 			pageInput.value = "1";
 		}
+		if (expandedStateInput) {
+			expandedStateInput.value = "";
+		}
 
 		hideAutocomplete();
 		toggleClearButton();
 		renderActiveFilterChips();
+		syncFilterQueryToUrl();
 		if (isServerGrid) {
 			filterForm.submit();
 			return;
@@ -1589,8 +1603,12 @@ document.addEventListener("DOMContentLoaded", function () {
 				if (pageInput) {
 					pageInput.value = "1";
 				}
+				if (expandedStateInput) {
+					expandedStateInput.value = "";
+				}
 
 				renderActiveFilterChips();
+				syncFilterQueryToUrl();
 				if (isServerGrid) {
 					filterForm.submit();
 					return;
@@ -1661,7 +1679,11 @@ document.addEventListener("DOMContentLoaded", function () {
 		if (pageInput) {
 			pageInput.value = "1";
 		}
+		if (expandedStateInput) {
+			expandedStateInput.value = "";
+		}
 		renderActiveFilterChips();
+		syncFilterQueryToUrl();
 		if (isServerGrid) {
 			filterForm.submit();
 			return;
@@ -1726,7 +1748,11 @@ document.addEventListener("DOMContentLoaded", function () {
 		if (pageInput) {
 			pageInput.value = "1";
 		}
+		if (expandedStateInput) {
+			expandedStateInput.value = "";
+		}
 		renderActiveFilterChips();
+		syncFilterQueryToUrl();
 		if (isServerGrid) {
 			return;
 		}
@@ -1739,7 +1765,11 @@ document.addEventListener("DOMContentLoaded", function () {
 			if (pageInput) {
 				pageInput.value = "1";
 			}
+			if (expandedStateInput) {
+				expandedStateInput.value = "";
+			}
 			renderActiveFilterChips();
+			syncFilterQueryToUrl();
 			if (isServerGrid) {
 				return;
 			}
@@ -1753,10 +1783,31 @@ document.addEventListener("DOMContentLoaded", function () {
 			if (pageInput) {
 				pageInput.value = "1";
 			}
+			if (expandedStateInput) {
+				expandedStateInput.value = "";
+			}
 			renderActiveFilterChips();
+			syncFilterQueryToUrl();
 			if (isServerGrid) {
 				return;
 			}
+	if (perPageFilter) {
+		perPageFilter.addEventListener("change", function () {
+			if (pageInput) {
+				pageInput.value = "1";
+			}
+			if (expandedStateInput) {
+				expandedStateInput.value = "";
+			}
+			syncFilterQueryToUrl();
+			if (isServerGrid) {
+				return;
+			}
+
+			updateTableRows();
+		});
+	}
+
 
 			updateTableRows();
 		});
@@ -1783,6 +1834,8 @@ document.addEventListener("DOMContentLoaded", function () {
 			pageInput.value = "1";
 		}
 
+		syncFilterQueryToUrl();
+
 		if (isServerGrid) {
 			return;
 		}
@@ -1804,9 +1857,13 @@ document.addEventListener("DOMContentLoaded", function () {
 			if (pageInput) {
 				pageInput.value = "1";
 			}
+			if (expandedStateInput) {
+				expandedStateInput.value = "";
+			}
 			hideAutocomplete();
 			toggleClearButton();
 			renderActiveFilterChips();
+			syncFilterQueryToUrl();
 			if (isServerGrid) {
 				filterForm.submit();
 				return;
