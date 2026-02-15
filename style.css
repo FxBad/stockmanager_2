@@ -3820,6 +3820,25 @@ tr.is-dirty {
 
 tr.is-dirty td[data-label="Nama Barang"] .row-dirty-indicator {
 	opacity: 1;
+	background: #d97706;
+}
+
+tr.is-saved {
+	background-color: #ecfdf3;
+}
+
+tr.is-saved td[data-label="Nama Barang"] .row-dirty-indicator {
+	opacity: 1;
+	background: #16a34a;
+}
+
+tr.is-failed {
+	background-color: #fef2f2;
+}
+
+tr.is-failed td[data-label="Nama Barang"] .row-dirty-indicator {
+	opacity: 1;
+	background: #dc2626;
 }
 
 tr.is-locked {

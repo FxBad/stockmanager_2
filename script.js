@@ -113,6 +113,11 @@ document.addEventListener("DOMContentLoaded", function () {
 		const defaultFabHtml = fabBtn
 			? fabBtn.getAttribute("data-default-html") || fabBtn.innerHTML
 			: "";
+		const pendingRowIds = getDirtyRows()
+			.map((row) => row.getAttribute("data-item-id"))
+			.filter(Boolean);
+
+		clearFailedStateForRows(pendingRowIds);
 
 		if (stickyBtn) {
 			stickyBtn.disabled = true;
@@ -191,6 +196,7 @@ document.addEventListener("DOMContentLoaded", function () {
 					}
 
 					persistAllRowOriginalValues();
+					markRowsAsSaved(pendingRowIds);
 					updateBatchSaveSummary();
 
 					showModal({
@@ -202,6 +208,7 @@ document.addEventListener("DOMContentLoaded", function () {
 						okText: "OK",
 					});
 				} else {
+					markRowsAsFailed(pendingRowIds);
 					showModal({
 						title: "Gagal",
 						message:
@@ -223,6 +230,7 @@ document.addEventListener("DOMContentLoaded", function () {
 					fabBtn.classList.remove("is-loading");
 					fabBtn.innerHTML = defaultFabHtml;
 				}
+				markRowsAsFailed(pendingRowIds);
 				showModal({
 					title: "Gagal",
 					message:
@@ -374,6 +382,51 @@ function getDirtyRows() {
 	return Array.from(document.querySelectorAll("tr[data-item-id].is-dirty"));
 }
 
+function getRowStatusTextElement(row) {
+	if (!row) return null;
+	return row.querySelector(".row-dirty-text");
+}
+
+function setRowStatusText(row, text) {
+	const textEl = getRowStatusTextElement(row);
+	if (!textEl) return;
+	textEl.textContent = text;
+}
+
+function markRowsAsSaved(itemIds) {
+	(itemIds || []).forEach((itemId) => {
+		const row = getRowByItemId(itemId);
+		if (!row) return;
+
+		row.classList.remove("is-dirty", "is-failed");
+		row.classList.add("is-saved");
+		setRowStatusText(row, "Berhasil disimpan");
+	});
+}
+
+function markRowsAsFailed(itemIds) {
+	(itemIds || []).forEach((itemId) => {
+		const row = getRowByItemId(itemId);
+		if (!row) return;
+
+		row.classList.remove("is-saved");
+		row.classList.add("is-failed");
+		setRowStatusText(row, "Gagal diperbarui");
+	});
+}
+
+function clearFailedStateForRows(itemIds) {
+	(itemIds || []).forEach((itemId) => {
+		const row = getRowByItemId(itemId);
+		if (!row) return;
+
+		row.classList.remove("is-failed");
+		if (row.classList.contains("is-dirty")) {
+			setRowStatusText(row, "Belum disimpan");
+		}
+	});
+}
+
 function setControlLockedState(control, locked) {
 	if (!control) return;
 
@@ -444,7 +497,17 @@ function refreshRowDirtyState(itemId) {
 	const levelEl = document.getElementById("level_" + itemId);
 	const dirty = isControlDirty(fieldEl) || isControlDirty(levelEl);
 
-	row.classList.toggle("is-dirty", dirty);
+	if (dirty) {
+		row.classList.add("is-dirty");
+		row.classList.remove("is-saved", "is-failed");
+		setRowStatusText(row, "Belum disimpan");
+	} else {
+		row.classList.remove("is-dirty", "is-failed");
+		if (!row.classList.contains("is-saved")) {
+			setRowStatusText(row, "Tidak ada perubahan");
+		}
+	}
+
 	updateBatchSaveSummary();
 }
 
