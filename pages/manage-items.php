@@ -1251,10 +1251,10 @@ try {
 
             function pollAuditFeed() {
                 fetch('actions/audit-feed.php?since_id=' + encodeURIComponent(String(lastAuditId)), {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
                     .then(function(response) {
                         if (!response.ok) {
                             throw new Error('Audit feed request gagal');
@@ -1269,8 +1269,7 @@ try {
                             prependAuditItems(payload.rows);
                         }
                     })
-                    .catch(function() {
-                    });
+                    .catch(function() {});
             }
 
             window.setInterval(pollAuditFeed, 15000);
