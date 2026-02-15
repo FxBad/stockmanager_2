@@ -64,3 +64,6 @@ coverage/
 *.temp
 *.swp
 *~
+
+# --- Local launcher scripts ---
+start.bat
