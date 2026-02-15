@@ -736,6 +736,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	const autocompleteList = document.getElementById("autocomplete-list");
 	const clearButton = document.getElementById("search-clear-btn");
 	const filterForm = searchInput ? searchInput.closest("form") : null;
+	const resetFilterButton = filterForm
+		? filterForm.querySelector("#reset-filter-btn")
+		: null;
 	const categoryFilter = filterForm
 		? filterForm.querySelector('select[name="category"]')
 		: null;
@@ -1031,13 +1034,14 @@ document.addEventListener("DOMContentLoaded", function () {
 		}
 	});
 
-	// Prevent form submission when autocomplete is open and user presses Enter
+	// Keep filtering in live-update mode (avoid full page reload on submit/Enter)
 	searchInput.closest("form").addEventListener("submit", function (e) {
+		e.preventDefault();
+
 		if (autocompleteList.classList.contains("show")) {
 			const items =
 				autocompleteList.querySelectorAll(".autocomplete-item");
 			if (currentFocus > -1 && items[currentFocus]) {
-				e.preventDefault();
 				selectItem(items[currentFocus].dataset.value);
 			}
 		}
@@ -1046,6 +1050,23 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (clearButton) {
 		clearButton.addEventListener("click", function () {
 			searchInput.value = "";
+			hideAutocomplete();
+			toggleClearButton();
+			updateTableRows();
+			searchInput.focus();
+		});
+	}
+
+	if (resetFilterButton) {
+		resetFilterButton.addEventListener("click", function () {
+			searchInput.value = "";
+			if (categoryFilter) {
+				categoryFilter.value = "";
+			}
+			if (statusFilter) {
+				statusFilter.value = "";
+			}
+
 			hideAutocomplete();
 			toggleClearButton();
 			updateTableRows();

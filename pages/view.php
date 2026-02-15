@@ -147,7 +147,7 @@ $colspan = $colCount;
                             <option value="out-stock" <?php echo $status === 'out-stock' ? 'selected' : ''; ?>><?php echo translateStatus('out-stock', 'id'); ?></option>
                         </select>
 
-                        <button type="submit" class="btn-filter">Terapkan Filter</button>
+                        <button type="button" id="reset-filter-btn" class="btn-filter">Reset Filter</button>
                     </div>
                 </form>
             </div>

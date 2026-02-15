@@ -1,0 +1,46 @@
+[Sun Feb 15 11:15:27 2026] PHP 8.2.12 Development Server (http://localhost:3000) started
+[Sun Feb 15 11:15:29 2026] [::1]:59377 Accepted
+[Sun Feb 15 11:15:29 2026] [::1]:59377 Closed without sending a request; it was probably just an unused speculative preconnection
+[Sun Feb 15 11:15:29 2026] [::1]:59377 Closing
+[Sun Feb 15 11:15:30 2026] [::1]:58023 Accepted
+[Sun Feb 15 11:15:30 2026] [::1]:58023 [200]: GET /
+[Sun Feb 15 11:15:30 2026] [::1]:58023 Closing
+[Sun Feb 15 11:15:30 2026] [::1]:56297 Accepted
+[Sun Feb 15 11:15:30 2026] [::1]:56298 Accepted
+[Sun Feb 15 11:15:30 2026] [::1]:56299 Accepted
+[Sun Feb 15 11:15:30 2026] [::1]:56297 [200]: GET /style.css?v=1771128930
+[Sun Feb 15 11:15:30 2026] [::1]:56298 [200]: GET /script.js?v=1771128930
+[Sun Feb 15 11:15:30 2026] [::1]:56299 [404]: GET /transition.js - No such file or directory
+[Sun Feb 15 11:15:30 2026] [::1]:56299 Closing
+[Sun Feb 15 11:15:30 2026] [::1]:56297 Closing
+[Sun Feb 15 11:15:30 2026] [::1]:56298 Closing
+[Sun Feb 15 11:15:30 2026] [::1]:62966 Accepted
+[Sun Feb 15 11:15:30 2026] [::1]:62966 [404]: GET /favicon.ico - No such file or directory
+[Sun Feb 15 11:15:30 2026] [::1]:62966 Closing
+[Sun Feb 15 11:15:33 2026] [::1]:64124 Accepted
+[Sun Feb 15 11:15:33 2026] [::1]:64124 [200]: GET /view.php
+[Sun Feb 15 11:15:33 2026] [::1]:64124 Closing
+[Sun Feb 15 11:15:33 2026] [::1]:60307 Accepted
+[Sun Feb 15 11:15:33 2026] [::1]:60308 Accepted
+[Sun Feb 15 11:15:33 2026] [::1]:60307 [200]: GET /style.css?v=1771128933
+[Sun Feb 15 11:15:33 2026] [::1]:60308 [200]: GET /script.js?v=1771128933
+[Sun Feb 15 11:15:33 2026] [::1]:60307 Closing
+[Sun Feb 15 11:15:33 2026] [::1]:60308 Closing
+[Sun Feb 15 11:16:31 2026] [::1]:64274 Accepted
+[Sun Feb 15 11:16:31 2026] [::1]:64274 [200]: GET /view.php
+[Sun Feb 15 11:16:31 2026] [::1]:64274 Closing
+[Sun Feb 15 11:16:31 2026] [::1]:51055 Accepted
+[Sun Feb 15 11:16:31 2026] [::1]:51055 [200]: GET /style.css?v=1771128991
+[Sun Feb 15 11:16:31 2026] [::1]:51055 Closing
+[Sun Feb 15 11:16:31 2026] [::1]:51056 Accepted
+[Sun Feb 15 11:16:31 2026] [::1]:51056 [200]: GET /script.js?v=1771128991
+[Sun Feb 15 11:16:31 2026] [::1]:51056 Closing
+[Sun Feb 15 11:16:39 2026] [::1]:58686 Accepted
+[Sun Feb 15 11:16:39 2026] [::1]:58686 [200]: GET /view.php
+[Sun Feb 15 11:16:39 2026] [::1]:58686 Closing
+[Sun Feb 15 11:16:39 2026] [::1]:58688 Accepted
+[Sun Feb 15 11:16:39 2026] [::1]:58688 [200]: GET /style.css?v=1771128999
+[Sun Feb 15 11:16:39 2026] [::1]:58688 Closing
+[Sun Feb 15 11:16:39 2026] [::1]:61348 Accepted
+[Sun Feb 15 11:16:39 2026] [::1]:61348 [200]: GET /script.js?v=1771128999
+[Sun Feb 15 11:16:39 2026] [::1]:61348 Closing
