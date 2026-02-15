@@ -3764,6 +3764,10 @@ table th i {
 	box-shadow: none;
 }
 
+.batch-save-fab {
+	display: none;
+}
+
 .item-name-wrap {
 	display: inline-flex;
 	align-items: center;
@@ -3810,20 +3814,52 @@ tr.is-dirty td[data-label="Nama Barang"] .row-dirty-indicator {
 	}
 
 	.batch-save-sticky {
-		bottom: 8px;
-		padding: 10px;
-		flex-direction: column;
-		align-items: stretch;
+		display: none;
 	}
 
-	.batch-save-summary {
+	.batch-save-fab {
+		position: fixed;
+		right: 14px;
+		bottom: 18px;
+		width: 56px;
+		height: 56px;
+		border-radius: 999px;
+		border: none;
+		background: linear-gradient(90deg, var(--fern-green), var(--hunter-green));
+		color: #fff;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 8px 20px rgba(58, 90, 64, 0.28);
+		z-index: 7;
+		cursor: pointer;
+	}
+
+	.batch-save-fab i {
+		font-size: 24px;
+	}
+
+	.batch-save-fab-count {
+		position: absolute;
+		top: -4px;
+		right: -4px;
+		min-width: 20px;
+		height: 20px;
+		padding: 0 5px;
+		border-radius: 999px;
+		background: #dc2626;
+		color: #fff;
+		font-size: 11px;
+		font-weight: 600;
+		line-height: 20px;
 		text-align: center;
-		font-size: 13px;
+		border: 2px solid #fff;
 	}
 
-	.batch-save-btn {
-		min-width: 0;
-		width: 100%;
+	.batch-save-fab:disabled {
+		opacity: 0.65;
+		cursor: not-allowed;
+		box-shadow: none;
 	}
 
 	.row-dirty-indicator {

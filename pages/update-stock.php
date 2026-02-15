@@ -421,6 +421,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         Simpan Semua Perubahan (0)
                     </button>
                 </div>
+                <button type="submit" class="batch-save-fab" id="batch-save-fab" disabled aria-label="Simpan Semua Perubahan (0 item)" data-default-html="<i class='bx bx-save'></i><span class='batch-save-fab-count' id='batch-save-fab-count'>0</span>">
+                    <i class='bx bx-save'></i>
+                    <span class="batch-save-fab-count" id="batch-save-fab-count">0</span>
+                </button>
                 <noscript>
                     <div class="form-actions">
                         <button type="submit" class="btn-submit">Simpan Semua Perubahan</button>

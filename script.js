@@ -71,15 +71,25 @@ document.addEventListener("DOMContentLoaded", function () {
 			return;
 		}
 
-		const submitBtn = this.querySelector('[type="submit"]');
-		const defaultText = submitBtn
-			? submitBtn.getAttribute("data-default-text") ||
-				submitBtn.textContent
+		const stickyBtn = document.getElementById("batch-save-btn");
+		const fabBtn = document.getElementById("batch-save-fab");
+		const defaultStickyText = stickyBtn
+			? stickyBtn.getAttribute("data-default-text") ||
+				stickyBtn.textContent
 			: "Simpan Semua Perubahan";
-		if (submitBtn) {
-			submitBtn.disabled = true;
-			submitBtn.innerHTML =
+		const defaultFabHtml = fabBtn
+			? fabBtn.getAttribute("data-default-html") || fabBtn.innerHTML
+			: "";
+
+		if (stickyBtn) {
+			stickyBtn.disabled = true;
+			stickyBtn.innerHTML =
 				'<i class="bx bx-loader-alt bx-spin"></i> Memproses...';
+		}
+		if (fabBtn) {
+			fabBtn.disabled = true;
+			fabBtn.classList.add("is-loading");
+			fabBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i>';
 		}
 
 		const formData = new FormData(this);
@@ -108,9 +118,14 @@ document.addEventListener("DOMContentLoaded", function () {
 				}),
 			)
 			.then((data) => {
-				if (submitBtn) {
-					submitBtn.disabled = false;
-					submitBtn.innerHTML = defaultText;
+				if (stickyBtn) {
+					stickyBtn.disabled = false;
+					stickyBtn.innerHTML = defaultStickyText;
+				}
+				if (fabBtn) {
+					fabBtn.disabled = false;
+					fabBtn.classList.remove("is-loading");
+					fabBtn.innerHTML = defaultFabHtml;
 				}
 
 				if (data && data.success) {
@@ -164,9 +179,14 @@ document.addEventListener("DOMContentLoaded", function () {
 				}
 			})
 			.catch((err) => {
-				if (submitBtn) {
-					submitBtn.disabled = false;
-					submitBtn.innerHTML = defaultText;
+				if (stickyBtn) {
+					stickyBtn.disabled = false;
+					stickyBtn.innerHTML = defaultStickyText;
+				}
+				if (fabBtn) {
+					fabBtn.disabled = false;
+					fabBtn.classList.remove("is-loading");
+					fabBtn.innerHTML = defaultFabHtml;
 				}
 				showModal({
 					title: "Gagal",
@@ -254,6 +274,8 @@ function getDirtySummary() {
 function updateBatchSaveSummary() {
 	const summaryEl = document.getElementById("batch-save-summary");
 	const saveBtn = document.getElementById("batch-save-btn");
+	const fabBtn = document.getElementById("batch-save-fab");
+	const fabCountEl = document.getElementById("batch-save-fab-count");
 	if (!summaryEl || !saveBtn) return;
 
 	const { rowCount, fieldCount } = getDirtySummary();
@@ -269,6 +291,30 @@ function updateBatchSaveSummary() {
 	saveBtn.textContent = buttonText;
 	saveBtn.setAttribute("data-default-text", buttonText);
 	saveBtn.disabled = rowCount < 1;
+
+	if (fabBtn) {
+		fabBtn.disabled = rowCount < 1;
+		fabBtn.setAttribute(
+			"aria-label",
+			"Simpan Semua Perubahan (" + rowCount + " item)",
+		);
+	}
+
+	if (fabCountEl) {
+		fabCountEl.textContent = rowCount > 99 ? "99+" : String(rowCount);
+	}
+
+	if (fabBtn) {
+		const fabCountText = rowCount > 99 ? "99+" : String(rowCount);
+		const fabDefaultHtml =
+			'<i class="bx bx-save"></i><span class="batch-save-fab-count" id="batch-save-fab-count">' +
+			fabCountText +
+			"</span>";
+		fabBtn.setAttribute("data-default-html", fabDefaultHtml);
+		if (!fabBtn.classList.contains("is-loading")) {
+			fabBtn.innerHTML = fabDefaultHtml;
+		}
+	}
 }
 
 function markRowDirtyByFieldId(fieldId) {
