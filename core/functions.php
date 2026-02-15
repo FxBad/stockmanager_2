@@ -79,6 +79,114 @@ function estimateDailyConsumptionFromItemHistory($itemId)
     return $cache[$itemId];
 }
 
+function prefetchItemHistoryDailyConsumption(array $itemIds)
+{
+    static $cache = [];
+
+    if (!isset($GLOBALS['pdo']) || !$GLOBALS['pdo'] instanceof PDO) {
+        return [];
+    }
+
+    $normalizedIds = [];
+    foreach ($itemIds as $itemId) {
+        $id = (int)$itemId;
+        if ($id > 0) {
+            $normalizedIds[$id] = true;
+        }
+    }
+
+    if (empty($normalizedIds)) {
+        return [];
+    }
+
+    $requestedIds = array_keys($normalizedIds);
+    $missingIds = array_values(array_filter($requestedIds, function ($id) use ($cache) {
+        return !array_key_exists($id, $cache);
+    }));
+
+    if (!empty($missingIds)) {
+        $placeholders = implode(',', array_fill(0, count($missingIds), '?'));
+
+        $query = "SELECT item_id, total_stock_new, changed_at
+                  FROM item_stock_history
+                  WHERE item_id IN ({$placeholders})
+                    AND total_stock_old IS NOT NULL
+                    AND total_stock_new IS NOT NULL
+                  ORDER BY item_id ASC, changed_at ASC";
+
+        $ratesByItem = [];
+        $prevTimeByItem = [];
+        $prevStockByItem = [];
+
+        try {
+            $stmt = $GLOBALS['pdo']->prepare($query);
+            $stmt->execute($missingIds);
+
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $itemId = isset($row['item_id']) ? (int)$row['item_id'] : 0;
+                if ($itemId <= 0) {
+                    continue;
+                }
+
+                $currentTime = isset($row['changed_at']) ? strtotime((string)$row['changed_at']) : false;
+                $currentStock = isset($row['total_stock_new']) ? (float)$row['total_stock_new'] : null;
+                if ($currentTime === false || $currentStock === null) {
+                    continue;
+                }
+
+                if (isset($prevTimeByItem[$itemId], $prevStockByItem[$itemId])) {
+                    $elapsedDays = ($currentTime - $prevTimeByItem[$itemId]) / 86400;
+                    $stockUsed = $prevStockByItem[$itemId] - $currentStock;
+
+                    if ($elapsedDays > 0 && $stockUsed > 0) {
+                        if (!isset($ratesByItem[$itemId])) {
+                            $ratesByItem[$itemId] = [];
+                        }
+                        $ratesByItem[$itemId][] = $stockUsed / $elapsedDays;
+                    }
+                }
+
+                $prevTimeByItem[$itemId] = $currentTime;
+                $prevStockByItem[$itemId] = $currentStock;
+            }
+        } catch (Exception $e) {
+            foreach ($missingIds as $missingId) {
+                $cache[(int)$missingId] = null;
+            }
+            return array_intersect_key($cache, array_flip($requestedIds));
+        }
+
+        foreach ($missingIds as $missingId) {
+            $missingId = (int)$missingId;
+            $rates = isset($ratesByItem[$missingId]) ? $ratesByItem[$missingId] : [];
+            if (empty($rates)) {
+                $cache[$missingId] = null;
+                continue;
+            }
+
+            sort($rates, SORT_NUMERIC);
+            $count = count($rates);
+            $middle = (int)floor($count / 2);
+            if ($count % 2 === 0) {
+                $median = ($rates[$middle - 1] + $rates[$middle]) / 2;
+            } else {
+                $median = $rates[$middle];
+            }
+
+            $cache[$missingId] = $median > 0 ? $median : null;
+        }
+    }
+
+    $result = [];
+    foreach ($requestedIds as $requestedId) {
+        if (array_key_exists($requestedId, $cache)) {
+            $result[$requestedId] = $cache[$requestedId];
+        }
+    }
+
+    return $result;
+}
+
 function estimateDailyConsumptionFromCategory($category)
 {
     static $cache = [];
@@ -147,6 +255,30 @@ function resolveDailyConsumption($dailyConsumption, array $context = [])
     $category = isset($context['category']) ? (string)$context['category'] : '';
     $effectiveStock = isset($context['effective_stock']) ? (float)$context['effective_stock'] : 0.0;
     $minDaysCoverage = isset($context['min_days_coverage']) ? max(1, (int)$context['min_days_coverage']) : 1;
+
+    if (array_key_exists('prefetched_item_history_daily', $context)) {
+        $prefetchedItemValue = $context['prefetched_item_history_daily'];
+        if ($prefetchedItemValue !== null && (float)$prefetchedItemValue > 0) {
+            return [
+                'value' => (float)$prefetchedItemValue,
+                'source' => 'item-history',
+                'confidence' => 0.85
+            ];
+        }
+    }
+
+    if ($itemId > 0 && isset($context['prefetched_item_history_daily_map']) && is_array($context['prefetched_item_history_daily_map'])) {
+        if (array_key_exists($itemId, $context['prefetched_item_history_daily_map'])) {
+            $prefetchedMapValue = $context['prefetched_item_history_daily_map'][$itemId];
+            if ($prefetchedMapValue !== null && (float)$prefetchedMapValue > 0) {
+                return [
+                    'value' => (float)$prefetchedMapValue,
+                    'source' => 'item-history',
+                    'confidence' => 0.85
+                ];
+            }
+        }
+    }
 
     $itemEstimated = estimateDailyConsumptionFromItemHistory($itemId);
     if ($itemEstimated !== null && $itemEstimated > 0) {

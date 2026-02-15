@@ -80,6 +80,20 @@ try {
     $items = [];
 }
 
+$prefetchedItemHistoryDaily = [];
+if (!empty($items)) {
+    $itemIds = [];
+    foreach ($items as $row) {
+        $id = isset($row['id']) ? (int)$row['id'] : 0;
+        if ($id > 0) {
+            $itemIds[] = $id;
+        }
+    }
+    if (!empty($itemIds)) {
+        $prefetchedItemHistoryDaily = prefetchItemHistoryDailyConsumption($itemIds);
+    }
+}
+
 // Show warehouse stock and daily consumption only to office and admin
 $showSensitive = isRole('office') || isRole('admin');
 
@@ -229,8 +243,9 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
                     <?php else: ?>
                         <?php foreach ($items as $item):
                             // Normalize and cast values
+                            $itemId = isset($item['id']) ? (int)$item['id'] : 0;
                             $name = isset($item['name']) ? (string)$item['name'] : '';
-                            $category = isset($item['category']) ? (string)$item['category'] : '';
+                            $itemCategory = isset($item['category']) ? (string)$item['category'] : '';
                             $field_stock = isset($item['field_stock']) ? (float)$item['field_stock'] : 0;
                             $unit_conversion = isset($item['unit_conversion']) ? (float)$item['unit_conversion'] : 1;
                             $level_conversion = isset($item['level_conversion']) ? (float)$item['level_conversion'] : $unit_conversion;
@@ -247,36 +262,41 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
                                 'qty_conversion' => $unit_conversion,
                                 'calculation_mode' => $calculation_mode
                             ]);
+
+                            $dailyContext = [
+                                'item_id' => $itemId,
+                                'category' => $itemCategory,
+                                'effective_stock' => $totalStock,
+                                'min_days_coverage' => $min_days_coverage,
+                                'prefetched_item_history_daily' => array_key_exists($itemId, $prefetchedItemHistoryDaily) ? $prefetchedItemHistoryDaily[$itemId] : null
+                            ];
+
+                            $resolvedDaily = resolveDailyConsumption($daily_consumption, $dailyContext);
+
                             $daysCoverage = calculateDaysCoverage(
                                 $field_stock,
                                 0,
                                 $unit_conversion,
-                                $daily_consumption,
+                                isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : 0,
                                 $name,
                                 $level,
                                 $hasLevel,
                                 [
-                                    'item_id' => isset($item['id']) ? (int)$item['id'] : 0,
-                                    'category' => $category,
+                                    'item_id' => $itemId,
+                                    'category' => $itemCategory,
                                     'min_days_coverage' => $min_days_coverage,
                                     'level_conversion' => $level_conversion,
                                     'qty_conversion' => $unit_conversion,
-                                    'calculation_mode' => $calculation_mode
+                                    'calculation_mode' => $calculation_mode,
+                                    'prefetched_item_history_daily' => array_key_exists($itemId, $prefetchedItemHistoryDaily) ? $prefetchedItemHistoryDaily[$itemId] : null
                                 ]
                             );
 
                             $coverageClass = ((float)$daysCoverage < (float)$min_days_coverage) ? ' coverage-risk' : '';
-
-                            $resolvedDaily = resolveDailyConsumption($daily_consumption, [
-                                'item_id' => isset($item['id']) ? (int)$item['id'] : 0,
-                                'category' => $category,
-                                'effective_stock' => $totalStock,
-                                'min_days_coverage' => $min_days_coverage
-                            ]);
                         ?>
                             <tr>
                                 <td data-label="Nama Barang"><?php echo htmlspecialchars($name); ?></td>
-                                <td data-label="Kategori"><?php echo htmlspecialchars($category); ?></td>
+                                <td data-label="Kategori"><?php echo htmlspecialchars($itemCategory); ?></td>
                                 <td data-label="Stok" class="numeric-col"><?php echo number_format((int)$field_stock); ?></td>
                                 <?php if ($showSensitive): ?>
                                     <td data-label="Pemakaian Harian" class="numeric-col"><?php echo number_format((float)$resolvedDaily['value'], 2); ?><?php echo ((isset($resolvedDaily['source']) && $resolvedDaily['source'] !== 'manual') ? ' (est.)' : ''); ?></td>

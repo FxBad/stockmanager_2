@@ -87,6 +87,21 @@ try {
     $stmt->execute($params);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    $prefetchedItemHistoryDaily = [];
+    if (!empty($items)) {
+        $itemIds = [];
+        foreach ($items as $row) {
+            $id = isset($row['id']) ? (int)$row['id'] : 0;
+            if ($id > 0) {
+                $itemIds[] = $id;
+            }
+        }
+
+        if (!empty($itemIds)) {
+            $prefetchedItemHistoryDaily = prefetchItemHistoryDailyConsumption($itemIds);
+        }
+    }
+
     ob_start();
 
     if (empty($items)) {
@@ -121,11 +136,25 @@ try {
             $itemStatus = isset($item['status']) ? (string)$item['status'] : '';
             $hasLevel = isset($item['has_level']) ? (bool)$item['has_level'] : false;
 
+            $dailyContext = [
+                'item_id' => $id,
+                'category' => $itemCategory,
+                'effective_stock' => calculateEffectiveStock($fieldStock, $unitConversion, $level, $hasLevel, [
+                    'level_conversion' => $levelConversion,
+                    'qty_conversion' => $unitConversion,
+                    'calculation_mode' => $calculationMode
+                ]),
+                'min_days_coverage' => $minDaysCoverage,
+                'prefetched_item_history_daily' => array_key_exists($id, $prefetchedItemHistoryDaily) ? $prefetchedItemHistoryDaily[$id] : null
+            ];
+
+            $resolvedDaily = resolveDailyConsumption($dailyConsumption, $dailyContext);
+
             $daysCoverage = calculateDaysCoverage(
                 $fieldStock,
                 0,
                 $unitConversion,
-                $dailyConsumption,
+                isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : 0,
                 $name,
                 $level,
                 $hasLevel,
@@ -135,24 +164,12 @@ try {
                     'min_days_coverage' => $minDaysCoverage,
                     'level_conversion' => $levelConversion,
                     'qty_conversion' => $unitConversion,
-                    'calculation_mode' => $calculationMode
+                    'calculation_mode' => $calculationMode,
+                    'prefetched_item_history_daily' => array_key_exists($id, $prefetchedItemHistoryDaily) ? $prefetchedItemHistoryDaily[$id] : null
                 ]
             );
 
             $coverageClass = ((float)$daysCoverage < (float)$minDaysCoverage) ? ' coverage-risk' : '';
-
-            $effectiveStock = calculateEffectiveStock($fieldStock, $unitConversion, $level, $hasLevel, [
-                'level_conversion' => $levelConversion,
-                'qty_conversion' => $unitConversion,
-                'calculation_mode' => $calculationMode
-            ]);
-
-            $resolvedDaily = resolveDailyConsumption($dailyConsumption, [
-                'item_id' => $id,
-                'category' => $itemCategory,
-                'effective_stock' => $effectiveStock,
-                'min_days_coverage' => $minDaysCoverage
-            ]);
 
             if ($context === 'manage') {
         ?>
