@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS `items` (
   KEY `idx_items_deleted_at` (`deleted_at`),
   KEY `idx_items_filter_sort` (`deleted_at`,`category`,`status`,`last_updated`),
   KEY `idx_items_deleted_name` (`deleted_at`,`name`),
+  FULLTEXT KEY `idx_items_name_fulltext` (`name`),
   KEY `deleted_by` (`deleted_by`),
   CONSTRAINT `items_ibfk_1` FOREIGN KEY (`added_by`) REFERENCES `users` (`id`),
   CONSTRAINT `items_ibfk_2` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`),

@@ -69,8 +69,10 @@ if ($status !== '') {
 }
 
 if ($search !== '') {
-    $query .= ' AND i.name LIKE ?';
-    $params[] = "%{$search}%";
+    $searchSql = appendItemNameSearchCondition('i.name', $search, $params);
+    if ($searchSql !== '') {
+        $query .= ' AND' . $searchSql;
+    }
 }
 
 $query .= " ORDER BY i.{$sortBy} {$sortDir}";

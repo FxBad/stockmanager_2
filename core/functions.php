@@ -1124,6 +1124,90 @@ function db_has_table($table)
     }
 }
 
+function db_has_index($table, $indexName, $indexType = null)
+{
+    if (!isset($GLOBALS['pdo']) || !$GLOBALS['pdo'] instanceof PDO) return false;
+
+    try {
+        $query = "SELECT index_name, index_type
+                  FROM information_schema.statistics
+                  WHERE table_schema = DATABASE()
+                    AND table_name = ?
+                    AND index_name = ?
+                  LIMIT 1";
+        $stmt = $GLOBALS['pdo']->prepare($query);
+        $stmt->execute([(string)$table, (string)$indexName]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return false;
+        }
+
+        if ($indexType === null || $indexType === '') {
+            return true;
+        }
+
+        $actualType = isset($row['index_type']) ? strtoupper((string)$row['index_type']) : '';
+        return $actualType === strtoupper((string)$indexType);
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function buildFulltextBooleanPrefixQuery($term)
+{
+    $term = trim((string)$term);
+    if ($term === '') {
+        return '';
+    }
+
+    $normalized = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $term);
+    if (!is_string($normalized) || trim($normalized) === '') {
+        return '';
+    }
+
+    $parts = preg_split('/\s+/u', trim($normalized));
+    if (!is_array($parts)) {
+        return '';
+    }
+
+    $tokens = [];
+    foreach ($parts as $part) {
+        $token = trim((string)$part);
+        if (mb_strlen($token) < 2) {
+            continue;
+        }
+        $tokens[$token] = '+' . $token . '*';
+    }
+
+    if (empty($tokens)) {
+        return '';
+    }
+
+    return implode(' ', array_values($tokens));
+}
+
+function appendItemNameSearchCondition($qualifiedColumn, $searchTerm, array &$params, $fulltextIndexName = 'idx_items_name_fulltext')
+{
+    $qualifiedColumn = trim((string)$qualifiedColumn);
+    $searchTerm = trim((string)$searchTerm);
+
+    if ($qualifiedColumn === '' || $searchTerm === '') {
+        return '';
+    }
+
+    $hasFulltextIndex = db_has_index('items', $fulltextIndexName, 'FULLTEXT');
+    if ($hasFulltextIndex) {
+        $booleanQuery = buildFulltextBooleanPrefixQuery($searchTerm);
+        if ($booleanQuery !== '') {
+            $params[] = $booleanQuery;
+            return " MATCH ({$qualifiedColumn}) AGAINST (? IN BOOLEAN MODE)";
+        }
+    }
+
+    $params[] = $searchTerm . '%';
+    return " {$qualifiedColumn} LIKE ?";
+}
+
 // Soft-delete helpers for items table
 function itemsSoftDeleteEnabled()
 {

@@ -20,17 +20,24 @@ if (strlen($term) < 1) {
 }
 
 try {
+    $searchParams = [];
+    $nameSearchSql = appendItemNameSearchCondition('name', $term, $searchParams);
+    if ($nameSearchSql === '') {
+        echo json_encode([]);
+        exit;
+    }
+
     // Search for items matching the term
     $stmt = $pdo->prepare("
         SELECT DISTINCT name 
         FROM items 
-                WHERE name LIKE ?
+                WHERE " . $nameSearchSql . "
                     AND " . activeItemsWhereSql() . "
         ORDER BY name ASC 
         LIMIT 10
     ");
 
-    $stmt->execute(["%$term%"]);
+    $stmt->execute($searchParams);
     $items = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
     // Return as JSON
