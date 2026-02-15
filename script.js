@@ -745,6 +745,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	const statusFilter = filterForm
 		? filterForm.querySelector('select[name="status"]')
 		: null;
+	const activeFilterChips = document.getElementById("active-filter-chips");
 	const resultCount = document.getElementById("filter-result-count");
 	const tableBody = document.querySelector(".table-container table tbody");
 
@@ -906,6 +907,71 @@ document.addEventListener("DOMContentLoaded", function () {
 		resultCount.textContent = `${rowCount} item ditemukan`;
 	}
 
+	function renderActiveFilterChips() {
+		if (!activeFilterChips) return;
+
+		const chips = [];
+		const searchValue = searchInput.value.trim();
+		const categoryValue = categoryFilter ? categoryFilter.value : "";
+		const statusValue = statusFilter ? statusFilter.value : "";
+
+		if (searchValue) {
+			chips.push({
+				key: "search",
+				label: `Pencarian: ${searchValue}`,
+			});
+		}
+
+		if (categoryValue && categoryFilter) {
+			const selectedCategory = categoryFilter.options[categoryFilter.selectedIndex];
+			chips.push({
+				key: "category",
+				label: `Kategori: ${selectedCategory ? selectedCategory.text : categoryValue}`,
+			});
+		}
+
+		if (statusValue && statusFilter) {
+			const selectedStatus = statusFilter.options[statusFilter.selectedIndex];
+			chips.push({
+				key: "status",
+				label: `Status: ${selectedStatus ? selectedStatus.text : statusValue}`,
+			});
+		}
+
+		activeFilterChips.innerHTML = "";
+
+		if (!chips.length) {
+			activeFilterChips.classList.remove("show");
+			return;
+		}
+
+		chips.forEach((chip) => {
+			const chipEl = document.createElement("button");
+			chipEl.type = "button";
+			chipEl.className = "filter-chip";
+			chipEl.dataset.filterKey = chip.key;
+			chipEl.setAttribute("aria-label", `Hapus filter ${chip.label}`);
+			chipEl.innerHTML = `${chip.label}<span class="chip-remove" aria-hidden="true">&times;</span>`;
+			chipEl.addEventListener("click", function () {
+				if (chip.key === "search") {
+					searchInput.value = "";
+					hideAutocomplete();
+					toggleClearButton();
+				} else if (chip.key === "category" && categoryFilter) {
+					categoryFilter.value = "";
+				} else if (chip.key === "status" && statusFilter) {
+					statusFilter.value = "";
+				}
+
+				renderActiveFilterChips();
+				updateTableRows();
+			});
+			activeFilterChips.appendChild(chipEl);
+		});
+
+		activeFilterChips.classList.add("show");
+	}
+
 	async function updateTableRows() {
 		if (!tableBody || !filterForm) return;
 
@@ -960,6 +1026,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		searchInput.value = value;
 		hideAutocomplete();
 		toggleClearButton();
+		renderActiveFilterChips();
 		updateTableRows();
 		// Optionally submit the form automatically
 		// searchInput.closest('form').submit();
@@ -1016,17 +1083,20 @@ document.addEventListener("DOMContentLoaded", function () {
 	);
 
 	searchInput.addEventListener("input", function () {
+		renderActiveFilterChips();
 		updateTableRows();
 	});
 
 	if (categoryFilter) {
 		categoryFilter.addEventListener("change", function () {
+			renderActiveFilterChips();
 			updateTableRows();
 		});
 	}
 
 	if (statusFilter) {
 		statusFilter.addEventListener("change", function () {
+			renderActiveFilterChips();
 			updateTableRows();
 		});
 	}
@@ -1064,6 +1134,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			searchInput.value = "";
 			hideAutocomplete();
 			toggleClearButton();
+			renderActiveFilterChips();
 			updateTableRows();
 			searchInput.focus();
 		});
@@ -1081,11 +1152,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 			hideAutocomplete();
 			toggleClearButton();
+			renderActiveFilterChips();
 			updateTableRows();
 			searchInput.focus();
 		});
 	}
 
 	toggleClearButton();
+	renderActiveFilterChips();
 	updateResultCount();
 });

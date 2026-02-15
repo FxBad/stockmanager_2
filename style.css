@@ -2505,6 +2505,42 @@ table th i {
 	font-feature-settings: "tnum" 1;
 }
 
+.active-filter-chips {
+	display: none;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.active-filter-chips.show {
+	display: flex;
+}
+
+.filter-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	border: 1px solid #d1d5db;
+	border-radius: 999px;
+	background: #f8faf8;
+	color: var(--brunswick-green);
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.filter-chip:hover {
+	background: #eef4ef;
+	border-color: var(--sage);
+}
+
+.chip-remove {
+	font-size: 16px;
+	line-height: 1;
+	opacity: 0.75;
+}
+
 /* Mobile optimization for filter group and button */
 @media screen and (max-width: 420px) {
 	.filter-group {
@@ -2547,6 +2583,15 @@ table th i {
 	.filter-result-count {
 		font-size: 14px;
 	}
+
+	.active-filter-chips {
+		gap: 6px;
+	}
+
+	.filter-chip {
+		font-size: 13px;
+		padding: 7px 10px;
+	}
 }
 
 @media screen and (max-width: 400px) {
@@ -2570,6 +2615,11 @@ table th i {
 
 	.filter-result-count {
 		font-size: 13px;
+	}
+
+	.filter-chip {
+		font-size: 12px;
+		padding: 6px 9px;
 	}
 }
 
