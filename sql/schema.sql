@@ -16,12 +16,10 @@
 
 
 -- Dumping database structure for u471204330_stockmanager_2
-DROP DATABASE IF EXISTS `u471204330_stockmanager_2`;
 CREATE DATABASE IF NOT EXISTS `u471204330_stockmanager_2` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
 USE `u471204330_stockmanager_2`;
 
 -- Dumping structure for table u471204330_stockmanager_2.access_log
-DROP TABLE IF EXISTS `access_log`;
 CREATE TABLE IF NOT EXISTS `access_log` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) DEFAULT NULL,
@@ -30,12 +28,11 @@ CREATE TABLE IF NOT EXISTS `access_log` (
   `ip` varchar(64) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table u471204330_stockmanager_2.items
-DROP TABLE IF EXISTS `items`;
 CREATE TABLE IF NOT EXISTS `items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(150) NOT NULL,
@@ -64,12 +61,11 @@ CREATE TABLE IF NOT EXISTS `items` (
   CONSTRAINT `items_ibfk_1` FOREIGN KEY (`added_by`) REFERENCES `users` (`id`),
   CONSTRAINT `items_ibfk_2` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`),
   CONSTRAINT `items_ibfk_3` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table u471204330_stockmanager_2.item_categories
-DROP TABLE IF EXISTS `item_categories`;
 CREATE TABLE IF NOT EXISTS `item_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
@@ -84,7 +80,6 @@ CREATE TABLE IF NOT EXISTS `item_categories` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table u471204330_stockmanager_2.item_stock_history
-DROP TABLE IF EXISTS `item_stock_history`;
 CREATE TABLE IF NOT EXISTS `item_stock_history` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `item_id` int(11) NOT NULL,
@@ -110,12 +105,11 @@ CREATE TABLE IF NOT EXISTS `item_stock_history` (
   PRIMARY KEY (`id`),
   KEY `item_id` (`item_id`),
   CONSTRAINT `item_stock_history_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=67 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Data exporting was unselected.
 
 -- Dumping structure for table u471204330_stockmanager_2.products
-DROP TABLE IF EXISTS `products`;
 CREATE TABLE IF NOT EXISTS `products` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
@@ -133,7 +127,6 @@ CREATE TABLE IF NOT EXISTS `products` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table u471204330_stockmanager_2.realtime_notifications
-DROP TABLE IF EXISTS `realtime_notifications`;
 CREATE TABLE IF NOT EXISTS `realtime_notifications` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `target_role` varchar(32) NOT NULL,
@@ -148,7 +141,6 @@ CREATE TABLE IF NOT EXISTS `realtime_notifications` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table u471204330_stockmanager_2.units
-DROP TABLE IF EXISTS `units`;
 CREATE TABLE IF NOT EXISTS `units` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `value` varchar(50) NOT NULL,
@@ -164,7 +156,6 @@ CREATE TABLE IF NOT EXISTS `units` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table u471204330_stockmanager_2.users
-DROP TABLE IF EXISTS `users`;
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,

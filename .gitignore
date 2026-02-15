@@ -70,3 +70,7 @@ start.bat
 
 # --- Local server logs ---
 .php-server.log
+
+# --- Keep SQL assets tracked ---
+!sql/
+!sql/**
