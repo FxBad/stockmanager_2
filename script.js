@@ -49,6 +49,126 @@ if (overlay && navBar) {
 	});
 }
 
+const AUTO_SAVE_DEBOUNCE_MS = 700;
+const autoSaveTimers = new Map();
+
+function clearAutoSaveTimer(itemId) {
+	if (!autoSaveTimers.has(itemId)) return;
+	clearTimeout(autoSaveTimers.get(itemId));
+	autoSaveTimers.delete(itemId);
+}
+
+function clearAllAutoSaveTimers() {
+	autoSaveTimers.forEach((timerId) => clearTimeout(timerId));
+	autoSaveTimers.clear();
+}
+
+function parseJsonSafely(text, fallbackMessage) {
+	try {
+		return JSON.parse(text);
+	} catch (e) {
+		return {
+			success: false,
+			message: text || fallbackMessage,
+		};
+	}
+}
+
+function runRowAutoSave(itemId) {
+	clearAutoSaveTimer(itemId);
+
+	if (document.body.classList.contains("update-stock-ui-locked")) {
+		return;
+	}
+
+	const row = getRowByItemId(itemId);
+	if (!row) return;
+	if (row.getAttribute("data-async-lock") === "1") return;
+
+	const fieldEl = document.getElementById("field_" + itemId);
+	const levelEl = document.getElementById("level_" + itemId);
+	const isDirty = isControlDirty(fieldEl) || isControlDirty(levelEl);
+	if (!isDirty) return;
+
+	if (!validateRowControls(itemId)) {
+		markRowsAsFailed([itemId]);
+		updateBatchSaveSummary();
+		return;
+	}
+
+	row.classList.remove("is-failed", "is-saved");
+	row.classList.add("is-autosaving");
+	setRowStatusText(row, "Menyimpan...");
+	lockRowForAsync(row, true);
+
+	const formData = new FormData();
+	formData.append("field_stock[" + itemId + "]", fieldEl ? fieldEl.value : "0");
+	if (levelEl) {
+		formData.append("level[" + itemId + "]", levelEl.value);
+	}
+
+	fetch(window.location.pathname, {
+		method: "POST",
+		body: formData,
+		headers: {
+			"X-Requested-With": "XMLHttpRequest",
+		},
+	})
+		.then((response) =>
+			response
+				.text()
+				.then((text) => parseJsonSafely(text, "Kesalahan server")),
+		)
+		.then((data) => {
+			if (data && data.success) {
+				if (Array.isArray(data.updated)) {
+					const updatedItem = data.updated.find(
+						(item) => String(item.id) === String(itemId),
+					);
+					if (updatedItem) {
+						if (fieldEl) fieldEl.value = updatedItem.field_stock;
+						if (
+							levelEl &&
+							Object.prototype.hasOwnProperty.call(updatedItem, "level")
+						) {
+							levelEl.value =
+								updatedItem.level === null ? "" : updatedItem.level;
+						}
+						try {
+							updateTotal(itemId);
+						} catch (e) {}
+					}
+				}
+
+				persistRowOriginalValues(itemId);
+				refreshRowDirtyState(itemId);
+				markRowsAsSaved([itemId]);
+				return;
+			}
+
+			markRowsAsFailed([itemId]);
+		})
+		.catch(() => {
+			markRowsAsFailed([itemId]);
+		})
+		.finally(() => {
+			row.classList.remove("is-autosaving");
+			lockRowForAsync(row, false);
+			updateBatchSaveSummary();
+		});
+}
+
+function scheduleRowAutoSave(itemId) {
+	if (!itemId) return;
+	clearAutoSaveTimer(itemId);
+
+	const timerId = setTimeout(() => {
+		runRowAutoSave(itemId);
+	}, AUTO_SAVE_DEBOUNCE_MS);
+
+	autoSaveTimers.set(itemId, timerId);
+}
+
 // AJAX submit for update-stock page: submit form via fetch and update table rows in-place
 document.addEventListener("DOMContentLoaded", function () {
 	const pageTitle = document.querySelector(".main-title h2");
@@ -77,6 +197,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	form.addEventListener("submit", function (e) {
 		e.preventDefault();
+		clearAllAutoSaveTimers();
 
 		const dirtySummary = getDirtySummary();
 		if (dirtySummary.rowCount < 1) {
@@ -142,20 +263,9 @@ document.addEventListener("DOMContentLoaded", function () {
 			},
 		})
 			.then((r) =>
-				r.text().then((txt) => {
-					try {
-						return JSON.parse(txt);
-					} catch (e) {
-						console.warn(
-							"Invalid JSON response (global update):",
-							txt,
-						);
-						return {
-							success: false,
-							message: txt || "Kesalahan server",
-						};
-					}
-				}),
+				r
+					.text()
+					.then((txt) => parseJsonSafely(txt, "Kesalahan server")),
 			)
 			.then((data) => {
 				if (stickyBtn) {
@@ -635,6 +745,9 @@ document.addEventListener("DOMContentLoaded", function () {
 				validateStockControl(fieldEl);
 				refreshRowDirtyState(itemId);
 			});
+			fieldEl.addEventListener("blur", function () {
+				scheduleRowAutoSave(itemId);
+			});
 		}
 
 		if (levelEl) {
@@ -645,6 +758,9 @@ document.addEventListener("DOMContentLoaded", function () {
 			levelEl.addEventListener("change", function () {
 				validateLevelControl(levelEl, itemId);
 				refreshRowDirtyState(itemId);
+			});
+			levelEl.addEventListener("blur", function () {
+				scheduleRowAutoSave(itemId);
 			});
 		}
 

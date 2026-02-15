@@ -3841,6 +3841,15 @@ tr.is-failed td[data-label="Nama Barang"] .row-dirty-indicator {
 	background: #dc2626;
 }
 
+tr.is-autosaving {
+	background-color: #eff6ff;
+}
+
+tr.is-autosaving td[data-label="Nama Barang"] .row-dirty-indicator {
+	opacity: 1;
+	background: #2563eb;
+}
+
 tr.is-locked {
 	opacity: 0.72;
 }
