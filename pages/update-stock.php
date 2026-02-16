@@ -144,6 +144,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // to avoid repeated history queries for each item in the loop.
         $prefetchedItemHistoryDailyMap = prefetchItemHistoryDailyConsumption(array_keys($normalizedInput));
 
+        // Build and prepare history insert statement once per request.
+        $historyTemplate = buildItemHistoryInsert($schemaFlags, [
+            'item_id' => 0,
+            'item_name' => '',
+            'category' => '',
+            'action' => 'update',
+            'field_stock_old' => 0,
+            'field_stock_new' => 0,
+            'warehouse_stock_old' => 0,
+            'warehouse_stock_new' => 0,
+            'status_old' => '',
+            'status_new' => '',
+            'total_stock_old' => 0,
+            'total_stock_new' => 0,
+            'days_coverage_old' => 0,
+            'days_coverage_new' => 0,
+            'unit' => '',
+            'unit_conversion' => 1,
+            'daily_consumption' => 0,
+            'level' => null,
+            'min_days_coverage' => 1,
+            'changed_by' => (int)$_SESSION['user_id'],
+            'note' => ''
+        ]);
+        $historyStmt = $pdo->prepare($historyTemplate['sql']);
+
         // Collect updated items for AJAX responses (single-row or multiple)
         $updatedItems = [];
 
@@ -241,31 +267,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'total' => $fieldStock
             ];
 
-            $historyInsert = buildItemHistoryInsert($schemaFlags, [
-                'item_id' => $itemId,
-                'item_name' => $orig['name'],
-                'category' => $orig['category'],
-                'action' => 'update',
-                'field_stock_old' => $orig['field_stock'],
-                'field_stock_new' => $fieldStock,
-                'warehouse_stock_old' => 0,
-                'warehouse_stock_new' => 0,
-                'status_old' => $orig['status'],
-                'status_new' => $status,
-                'total_stock_old' => $totalOld,
-                'total_stock_new' => $totalNew,
-                'days_coverage_old' => $daysOld,
-                'days_coverage_new' => $daysNew,
-                'unit' => (isset($orig['unit']) && $orig['unit'] !== null ? $orig['unit'] : ''),
-                'unit_conversion' => $orig['unit_conversion'],
-                'daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $orig['daily_consumption'],
-                'level' => ($levelValue !== null) ? $levelValue : (isset($orig['level']) ? $orig['level'] : null),
-                'min_days_coverage' => $orig['min_days_coverage'],
-                'changed_by' => $_SESSION['user_id'],
-                'note' => 'bulk stock update (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')'
-            ]);
-            $histStmt = $pdo->prepare($historyInsert['sql']);
-            $histStmt->execute($historyInsert['params']);
+            $historyParams = [
+                ':item_id' => $itemId,
+                ':item_name' => $orig['name'],
+                ':category' => $orig['category'],
+                ':action' => 'update',
+                ':field_stock_old' => $orig['field_stock'],
+                ':field_stock_new' => $fieldStock,
+                ':status_old' => $orig['status'],
+                ':status_new' => $status,
+                ':total_stock_old' => $totalOld,
+                ':total_stock_new' => $totalNew,
+                ':days_coverage_old' => $daysOld,
+                ':days_coverage_new' => $daysNew,
+                ':unit' => (isset($orig['unit']) && $orig['unit'] !== null ? $orig['unit'] : ''),
+                ':unit_conversion' => $orig['unit_conversion'],
+                ':daily_consumption' => isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : $orig['daily_consumption'],
+                ':min_days_coverage' => $orig['min_days_coverage'],
+                ':changed_by' => $_SESSION['user_id'],
+                ':note' => 'bulk stock update (consumption source: ' . (isset($resolvedDaily['source']) ? $resolvedDaily['source'] : 'manual') . ')'
+            ];
+            if (!empty($schemaFlags['hist_has_warehouse_old'])) {
+                $historyParams[':warehouse_stock_old'] = 0;
+            }
+            if (!empty($schemaFlags['hist_has_warehouse_new'])) {
+                $historyParams[':warehouse_stock_new'] = 0;
+            }
+            if (!empty($schemaFlags['hist_has_level'])) {
+                $historyParams[':level'] = ($levelValue !== null) ? $levelValue : (isset($orig['level']) ? $orig['level'] : null);
+            }
+
+            $historyStmt->execute($historyParams);
         }
 
         $pdo->commit();
