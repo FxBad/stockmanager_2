@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS `item_stock_history` (
   `changed_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `item_id` (`item_id`),
+  KEY `idx_item_id_changed_at` (`item_id`,`changed_at`),
   CONSTRAINT `item_stock_history_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=67 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
