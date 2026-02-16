@@ -432,6 +432,21 @@ try {
     $categories = $itemCategories;
     $message = '<div class="alert error">DB error: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
+
+$prefetchedItemHistoryDailyMap = [];
+if (!empty($items)) {
+    $itemIds = [];
+    foreach ($items as $row) {
+        $id = isset($row['id']) ? (int)$row['id'] : 0;
+        if ($id > 0) {
+            $itemIds[] = $id;
+        }
+    }
+
+    if (!empty($itemIds)) {
+        $prefetchedItemHistoryDailyMap = prefetchItemHistoryDailyConsumption($itemIds);
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -615,7 +630,8 @@ try {
                                 'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
                                 'level_conversion' => $level_conversion,
                                 'qty_conversion' => $unit_conversion,
-                                'calculation_mode' => $calculation_mode
+                                'calculation_mode' => $calculation_mode,
+                                'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
                             ]
                         );
 
@@ -629,7 +645,8 @@ try {
                             'item_id' => $id,
                             'category' => $itemCategory,
                             'effective_stock' => $effectiveStock,
-                            'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1
+                            'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
+                            'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
                         ]);
 
                         $isRowExpanded = in_array($id, $expandedRows, true);
