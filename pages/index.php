@@ -197,7 +197,6 @@ try {
 
     <!-- JavaScript -->
     <script src="script.js?<?php echo getVersion('script.js'); ?>"></script>
-    <script src="transition.js"></script>
 </body>
 
 </html>
