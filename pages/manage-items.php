@@ -82,10 +82,11 @@ try {
     $latestAuditMaxId = 0;
 }
 
-$itemsHasLevelFlag = db_has_column('items', 'has_level');
-$itemsHasLevelValue = db_has_column('items', 'level');
-$itemsHasLevelConversion = db_has_column('items', 'level_conversion');
-$itemsHasCalculationMode = db_has_column('items', 'calculation_mode');
+$schemaFlags = itemSchemaFlags();
+$itemsHasLevelFlag = !empty($schemaFlags['items_has_level_flag']);
+$itemsHasLevelValue = !empty($schemaFlags['items_has_level_value']);
+$itemsHasLevelConversion = !empty($schemaFlags['items_has_level_conversion']);
+$itemsHasCalculationMode = !empty($schemaFlags['items_has_calculation_mode']);
 
 $hasLevelSelect = $itemsHasLevelFlag ? ', i.has_level' : '';
 $levelSelect = $itemsHasLevelValue ? ', i.level' : ', NULL AS level';

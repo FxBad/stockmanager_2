@@ -1137,11 +1137,41 @@ function translateStatus($status, $lang = 'id')
 function db_has_column($table, $column)
 {
     if (!isset($GLOBALS['pdo']) || !$GLOBALS['pdo'] instanceof PDO) return false;
+
+    $table = trim((string)$table);
+    $column = trim((string)$column);
+    if ($table === '' || $column === '') {
+        return false;
+    }
+
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) {
+        return false;
+    }
+
+    static $tableColumnsCache = [];
+    $tableKey = strtolower($table);
+    $columnKey = strtolower($column);
+
+    if (array_key_exists($tableKey, $tableColumnsCache)) {
+        return isset($tableColumnsCache[$tableKey][$columnKey]);
+    }
+
     try {
-        $stmt = $GLOBALS['pdo']->prepare("SHOW COLUMNS FROM `" . $table . "` LIKE ?");
-        $stmt->execute([$column]);
-        return (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt = $GLOBALS['pdo']->query("SHOW COLUMNS FROM `" . $table . "`");
+        $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        $columns = [];
+        foreach ($rows as $row) {
+            $field = isset($row['Field']) ? strtolower(trim((string)$row['Field'])) : '';
+            if ($field !== '') {
+                $columns[$field] = true;
+            }
+        }
+
+        $tableColumnsCache[$tableKey] = $columns;
+        return isset($columns[$columnKey]);
     } catch (Exception $e) {
+        $tableColumnsCache[$tableKey] = [];
         return false;
     }
 }
