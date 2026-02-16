@@ -1472,6 +1472,14 @@ if (!empty($items)) {
             if (!panel || !listEl) return;
 
             let lastAuditId = parseInt(panel.getAttribute('data-last-audit-id') || '0', 10) || 0;
+            const baseIntervalMs = 15000;
+            const hiddenBaseIntervalMs = 60000;
+            const maxVisibleBackoffMs = 120000;
+            const maxHiddenBackoffMs = 300000;
+            let emptyStreak = 0;
+            let errorStreak = 0;
+            let pollTimer = null;
+            let pollInFlight = false;
 
             function escapeHtml(value) {
                 return String(value)
@@ -1529,7 +1537,39 @@ if (!empty($items)) {
                 trimAuditList(30);
             }
 
+            function isPageHidden() {
+                return typeof document.hidden === 'boolean' ? document.hidden : false;
+            }
+
+            function computeNextDelay() {
+                const hidden = isPageHidden();
+                const base = hidden ? hiddenBaseIntervalMs : baseIntervalMs;
+                const maxDelay = hidden ? maxHiddenBackoffMs : maxVisibleBackoffMs;
+
+                const emptyFactor = emptyStreak > 0 ? Math.pow(2, Math.min(emptyStreak, 3)) : 1;
+                const errorFactor = errorStreak > 0 ? Math.pow(2, Math.min(errorStreak, 4)) : 1;
+                const factor = Math.max(emptyFactor, errorFactor);
+
+                return Math.min(maxDelay, base * factor);
+            }
+
+            function scheduleNextPoll(delayMs) {
+                if (pollTimer) {
+                    window.clearTimeout(pollTimer);
+                }
+
+                pollTimer = window.setTimeout(function() {
+                    pollAuditFeed();
+                }, Math.max(1000, (typeof delayMs === 'number' ? delayMs : computeNextDelay())));
+            }
+
             function pollAuditFeed() {
+                if (pollInFlight) {
+                    scheduleNextPoll();
+                    return;
+                }
+
+                pollInFlight = true;
                 fetch('actions/audit-feed.php?since_id=' + encodeURIComponent(String(lastAuditId)), {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
@@ -1543,16 +1583,39 @@ if (!empty($items)) {
                     })
                     .then(function(payload) {
                         if (!payload || payload.success !== true) {
+                            errorStreak += 1;
                             return;
                         }
+
                         if (Array.isArray(payload.rows) && payload.rows.length > 0) {
                             prependAuditItems(payload.rows);
+                            emptyStreak = 0;
+                            errorStreak = 0;
+                        } else {
+                            emptyStreak += 1;
+                            errorStreak = 0;
                         }
                     })
-                    .catch(function() {});
+                    .catch(function() {
+                        errorStreak += 1;
+                    })
+                    .finally(function() {
+                        pollInFlight = false;
+                        scheduleNextPoll();
+                    });
             }
 
-            window.setInterval(pollAuditFeed, 15000);
+            document.addEventListener('visibilitychange', function() {
+                if (!isPageHidden()) {
+                    emptyStreak = 0;
+                    errorStreak = 0;
+                    scheduleNextPoll(1000);
+                } else {
+                    scheduleNextPoll(computeNextDelay());
+                }
+            });
+
+            scheduleNextPoll(baseIntervalMs);
         })();
     </script>
 </body>
