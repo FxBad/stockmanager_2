@@ -250,7 +250,8 @@ document.addEventListener("DOMContentLoaded", function () {
 		const defaultFabHtml = fabBtn
 			? fabBtn.getAttribute("data-default-html") || fabBtn.innerHTML
 			: "";
-		const pendingRowIds = getDirtyRows()
+		const dirtyRows = getDirtyRows();
+		const pendingRowIds = dirtyRows
 			.map((row) => row.getAttribute("data-item-id"))
 			.filter(Boolean);
 
@@ -267,7 +268,23 @@ document.addEventListener("DOMContentLoaded", function () {
 			fabBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i>';
 		}
 
-		const formData = new FormData(this);
+		const formData = new FormData();
+		dirtyRows.forEach((row) => {
+			const itemId = row.getAttribute("data-item-id");
+			if (!itemId) return;
+
+			const fieldEl = document.getElementById("field_" + itemId);
+			const levelEl = document.getElementById("level_" + itemId);
+
+			formData.append(
+				"field_stock[" + itemId + "]",
+				fieldEl ? fieldEl.value : "0",
+			);
+
+			if (levelEl) {
+				formData.append("level[" + itemId + "]", levelEl.value);
+			}
+		});
 
 		setUpdateStockUiLock(true);
 
