@@ -163,30 +163,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $levelConversion = isset($orig['level_conversion']) ? (float)$orig['level_conversion'] : (float)$orig['unit_conversion'];
             $calculationMode = isset($orig['calculation_mode']) ? (string)$orig['calculation_mode'] : 'combined';
 
-            // Warehouse stock removed from system
-            $warehouseStock = 0;
-
-            // Hitung status baru berdasar rules
-            $totalStock = $fieldStock;
-            $convertedStock = $totalStock * (float)$orig['unit_conversion'];
-            $daysCoverage = calculateDaysCoverage(
-                $fieldStock,
-                0,
+            $totalOld = calculateEffectiveStock(
+                $orig['field_stock'],
                 (float)$orig['unit_conversion'],
-                (float)$orig['daily_consumption'],
-                isset($orig['name']) ? $orig['name'] : null,
+                isset($orig['level']) ? $orig['level'] : null,
+                $itemHasLevel,
+                [
+                    'level_conversion' => $levelConversion,
+                    'qty_conversion' => (float)$orig['unit_conversion'],
+                    'calculation_mode' => $calculationMode
+                ]
+            );
+            $totalNew = calculateEffectiveStock(
+                $fieldStock,
+                (float)$orig['unit_conversion'],
                 $effectiveLevel,
                 $itemHasLevel,
                 [
-                    'item_id' => $itemId,
-                    'category' => isset($orig['category']) ? $orig['category'] : '',
-                    'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
                     'level_conversion' => $levelConversion,
                     'qty_conversion' => (float)$orig['unit_conversion'],
-                    'calculation_mode' => $calculationMode,
-                    'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
+                    'calculation_mode' => $calculationMode
                 ]
             );
+
+            $resolvedDaily = resolveDailyConsumption($orig['daily_consumption'], [
+                'item_id' => $itemId,
+                'category' => isset($orig['category']) ? $orig['category'] : '',
+                'effective_stock' => $totalNew,
+                'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
+                'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
+            ]);
+            $effectiveDailyConsumption = isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : 0.0;
+
+            $daysCoverage = $effectiveDailyConsumption > 0
+                ? floor($totalNew / $effectiveDailyConsumption)
+                : 0;
+
+            $daysOld = $effectiveDailyConsumption > 0
+                ? floor($totalOld / $effectiveDailyConsumption)
+                : 0;
+
+            $daysNew = $daysCoverage;
 
             $status = determineStatus($daysCoverage, (int)$orig['min_days_coverage']);
 
@@ -223,73 +240,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'level' => (isset($execParams[':level']) ? $execParams[':level'] : null),
                 'total' => $fieldStock
             ];
-
-            $totalOld = calculateEffectiveStock(
-                $orig['field_stock'],
-                (float)$orig['unit_conversion'],
-                isset($orig['level']) ? $orig['level'] : null,
-                $itemHasLevel,
-                [
-                    'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion'],
-                    'calculation_mode' => $calculationMode
-                ]
-            );
-            $totalNew = calculateEffectiveStock(
-                $fieldStock,
-                (float)$orig['unit_conversion'],
-                $effectiveLevel,
-                $itemHasLevel,
-                [
-                    'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion'],
-                    'calculation_mode' => $calculationMode
-                ]
-            );
-            $daysOld = calculateDaysCoverage(
-                $orig['field_stock'],
-                0,
-                $orig['unit_conversion'],
-                $orig['daily_consumption'],
-                isset($orig['name']) ? $orig['name'] : null,
-                isset($orig['level']) ? $orig['level'] : null,
-                $itemHasLevel,
-                [
-                    'item_id' => $itemId,
-                    'category' => isset($orig['category']) ? $orig['category'] : '',
-                    'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
-                    'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion'],
-                    'calculation_mode' => $calculationMode,
-                    'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
-                ]
-            );
-            $daysNew = calculateDaysCoverage(
-                $fieldStock,
-                0,
-                $orig['unit_conversion'],
-                $orig['daily_consumption'],
-                isset($orig['name']) ? $orig['name'] : null,
-                $effectiveLevel,
-                $itemHasLevel,
-                [
-                    'item_id' => $itemId,
-                    'category' => isset($orig['category']) ? $orig['category'] : '',
-                    'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
-                    'level_conversion' => $levelConversion,
-                    'qty_conversion' => (float)$orig['unit_conversion'],
-                    'calculation_mode' => $calculationMode,
-                    'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
-                ]
-            );
-
-            $resolvedDaily = resolveDailyConsumption($orig['daily_consumption'], [
-                'item_id' => $itemId,
-                'category' => isset($orig['category']) ? $orig['category'] : '',
-                'effective_stock' => $totalNew,
-                'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
-                'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
-            ]);
 
             $historyInsert = buildItemHistoryInsert($schemaFlags, [
                 'item_id' => $itemId,

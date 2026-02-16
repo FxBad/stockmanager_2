@@ -267,9 +267,9 @@ document.addEventListener("DOMContentLoaded", function () {
 			fabBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i>';
 		}
 
-		setUpdateStockUiLock(true);
-
 		const formData = new FormData(this);
+
+		setUpdateStockUiLock(true);
 
 		fetch(window.location.pathname, {
 			method: "POST",
