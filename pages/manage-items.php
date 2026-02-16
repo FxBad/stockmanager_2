@@ -616,25 +616,6 @@ if (!empty($items)) {
                         $hasLevel = isset($item['has_level']) ? (bool)$item['has_level'] : false;
                         $status = isset($item['status']) ? (string)$item['status'] : '';
 
-                        $daysCoverage = calculateDaysCoverage(
-                            $field_stock,
-                            0,
-                            $unit_conversion,
-                            $daily_consumption,
-                            $name,
-                            $level,
-                            $hasLevel,
-                            [
-                                'item_id' => $id,
-                                'category' => $itemCategory,
-                                'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
-                                'level_conversion' => $level_conversion,
-                                'qty_conversion' => $unit_conversion,
-                                'calculation_mode' => $calculation_mode,
-                                'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
-                            ]
-                        );
-
                         $effectiveStock = calculateEffectiveStock($field_stock, $unit_conversion, $level, $hasLevel, [
                             'level_conversion' => $level_conversion,
                             'qty_conversion' => $unit_conversion,
@@ -648,6 +629,11 @@ if (!empty($items)) {
                             'min_days_coverage' => isset($item['min_days_coverage']) ? (int)$item['min_days_coverage'] : 1,
                             'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
                         ]);
+
+                        $resolvedDailyValue = isset($resolvedDaily['value']) ? (float)$resolvedDaily['value'] : 0.0;
+                        $daysCoverage = $resolvedDailyValue > 0
+                            ? (int)floor($effectiveStock / $resolvedDailyValue)
+                            : 0;
 
                         $isRowExpanded = in_array($id, $expandedRows, true);
                     ?>
