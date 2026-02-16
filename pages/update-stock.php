@@ -140,6 +140,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $updateStmt = $pdo->prepare($updateSql);
 
+        // Prefetch historical daily-consumption estimates once per request
+        // to avoid repeated history queries for each item in the loop.
+        $prefetchedItemHistoryDailyMap = prefetchItemHistoryDailyConsumption(array_keys($normalizedInput));
+
         // Collect updated items for AJAX responses (single-row or multiple)
         $updatedItems = [];
 
@@ -179,7 +183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
                     'level_conversion' => $levelConversion,
                     'qty_conversion' => (float)$orig['unit_conversion'],
-                    'calculation_mode' => $calculationMode
+                    'calculation_mode' => $calculationMode,
+                    'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
                 ]
             );
 
@@ -255,7 +260,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
                     'level_conversion' => $levelConversion,
                     'qty_conversion' => (float)$orig['unit_conversion'],
-                    'calculation_mode' => $calculationMode
+                    'calculation_mode' => $calculationMode,
+                    'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
                 ]
             );
             $daysNew = calculateDaysCoverage(
@@ -272,7 +278,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
                     'level_conversion' => $levelConversion,
                     'qty_conversion' => (float)$orig['unit_conversion'],
-                    'calculation_mode' => $calculationMode
+                    'calculation_mode' => $calculationMode,
+                    'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
                 ]
             );
 
@@ -280,7 +287,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'item_id' => $itemId,
                 'category' => isset($orig['category']) ? $orig['category'] : '',
                 'effective_stock' => $totalNew,
-                'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1
+                'min_days_coverage' => isset($orig['min_days_coverage']) ? (int)$orig['min_days_coverage'] : 1,
+                'prefetched_item_history_daily_map' => $prefetchedItemHistoryDailyMap
             ]);
 
             $historyInsert = buildItemHistoryInsert($schemaFlags, [
