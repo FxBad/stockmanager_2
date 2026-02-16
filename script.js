@@ -51,6 +51,9 @@ if (overlay && navBar) {
 
 const AUTO_SAVE_DEBOUNCE_MS = 700;
 const autoSaveTimers = new Map();
+const dirtyRowIds = new Set();
+const dirtyFieldCountByRow = new Map();
+let dirtyFieldCountTotal = 0;
 
 function clearAutoSaveTimer(itemId) {
 	if (!autoSaveTimers.has(itemId)) return;
@@ -642,7 +645,20 @@ function validateUpdateStockForm() {
 }
 
 function getDirtyRows() {
-	return Array.from(document.querySelectorAll("tr[data-item-id].is-dirty"));
+	return Array.from(dirtyRowIds)
+		.map((itemId) => getRowByItemId(itemId))
+		.filter(Boolean);
+}
+
+function getDirtyFieldCountForRow(itemId) {
+	const fieldEl = document.getElementById("field_" + itemId);
+	const levelEl = document.getElementById("level_" + itemId);
+	let count = 0;
+
+	if (isControlDirty(fieldEl)) count += 1;
+	if (isControlDirty(levelEl)) count += 1;
+
+	return count;
 }
 
 function getRowStatusTextElement(row) {
@@ -753,18 +769,43 @@ function setUpdateStockUiLock(locked) {
 }
 
 function refreshRowDirtyState(itemId) {
+	const rowId = String(itemId);
 	const row = getRowByItemId(itemId);
-	if (!row) return;
+	if (!row) {
+		const prevMissingCount = dirtyFieldCountByRow.get(rowId) || 0;
+		if (prevMissingCount > 0) {
+			dirtyFieldCountTotal = Math.max(
+				0,
+				dirtyFieldCountTotal - prevMissingCount,
+			);
+		}
+		dirtyFieldCountByRow.delete(rowId);
+		dirtyRowIds.delete(rowId);
+		updateBatchSaveSummary();
+		return;
+	}
 
-	const fieldEl = document.getElementById("field_" + itemId);
-	const levelEl = document.getElementById("level_" + itemId);
-	const dirty = isControlDirty(fieldEl) || isControlDirty(levelEl);
+	const prevCount = dirtyFieldCountByRow.get(rowId) || 0;
+	const nextCount = getDirtyFieldCountForRow(itemId);
+
+	if (nextCount !== prevCount) {
+		dirtyFieldCountTotal += nextCount - prevCount;
+		if (nextCount > 0) {
+			dirtyFieldCountByRow.set(rowId, nextCount);
+		} else {
+			dirtyFieldCountByRow.delete(rowId);
+		}
+	}
+
+	const dirty = nextCount > 0;
 
 	if (dirty) {
+		dirtyRowIds.add(rowId);
 		row.classList.add("is-dirty");
 		row.classList.remove("is-saved", "is-failed");
 		setRowStatusText(row, "Belum disimpan");
 	} else {
+		dirtyRowIds.delete(rowId);
 		row.classList.remove("is-dirty", "is-failed");
 		if (!row.classList.contains("is-saved")) {
 			setRowStatusText(row, "Tidak ada perubahan");
@@ -794,27 +835,10 @@ function persistAllRowOriginalValues() {
 }
 
 function getDirtySummary() {
-	const rows = document.querySelectorAll("tr[data-item-id]");
-	let rowCount = 0;
-	let fieldCount = 0;
-
-	rows.forEach((row) => {
-		const itemId = row.getAttribute("data-item-id");
-		if (!itemId) return;
-
-		const fieldEl = document.getElementById("field_" + itemId);
-		const levelEl = document.getElementById("level_" + itemId);
-		const fieldDirty = isControlDirty(fieldEl);
-		const levelDirty = isControlDirty(levelEl);
-
-		if (fieldDirty || levelDirty) {
-			rowCount += 1;
-			if (fieldDirty) fieldCount += 1;
-			if (levelDirty) fieldCount += 1;
-		}
-	});
-
-	return { rowCount, fieldCount };
+	return {
+		rowCount: dirtyRowIds.size,
+		fieldCount: Math.max(0, dirtyFieldCountTotal),
+	};
 }
 
 function updateBatchSaveSummary() {
