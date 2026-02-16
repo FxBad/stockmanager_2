@@ -353,9 +353,15 @@ if ($status) {
 }
 
 if ($search) {
-    $query .= " AND i.name LIKE ?";
-    $countQuery .= " AND i.name LIKE ?";
-    $params[] = "%$search%";
+    $searchParams = [];
+    $searchSql = appendItemNameSearchCondition('i.name', $search, $searchParams);
+    if ($searchSql !== '') {
+        $query .= " AND" . $searchSql;
+        $countQuery .= " AND" . $searchSql;
+        foreach ($searchParams as $searchParam) {
+            $params[] = $searchParam;
+        }
+    }
 }
 
 $totalItems = 0;
