@@ -172,7 +172,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Satuan - StockManager</title>
-    <link rel="stylesheet" href="style.css?<?php echo getVersion(); ?>">
+    <link rel="stylesheet" href="style.css?<?php echo getVersion('style.css'); ?>">
     <link href="https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css" rel="stylesheet">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -397,7 +397,7 @@ try {
         </div>
     </main>
 
-    <script src="script.js?<?php echo getVersion(); ?>"></script>
+    <script src="script.js?<?php echo getVersion('script.js'); ?>"></script>
     <script>
         function openAddUnitModal() {
             const addForm = document.getElementById('add-unit-form');

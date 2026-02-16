@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta http-equiv="Expires" content="0">
 
     <title>Tambah Barang - StockManager</title>
-    <link rel="stylesheet" href="style.css?<?php echo getVersion(); ?>">
+    <link rel="stylesheet" href="style.css?<?php echo getVersion('style.css'); ?>">
     <link href="https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css" rel="stylesheet">
 </head>
 
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </main>
-    <script src="script.js?<?php echo getVersion(); ?>"></script>
+    <script src="script.js?<?php echo getVersion('script.js'); ?>"></script>
 </body>
 
 </html>

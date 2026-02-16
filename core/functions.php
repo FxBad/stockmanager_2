@@ -1069,10 +1069,44 @@ function isActive($files)
     return in_array($current, $files) ? 'active' : '';
 }
 
-// Version helper for static assets
-function getVersion()
+// Version helper for static assets (stable per file change)
+function getVersion($assetPath = null)
 {
-    return 'v=' . time();
+    static $cache = [];
+
+    $path = trim((string)$assetPath);
+
+    if ($path === '') {
+        $fallbackVersion = isset($_ENV['APP_VERSION']) ? trim((string)$_ENV['APP_VERSION']) : '';
+        if ($fallbackVersion !== '') {
+            return 'v=' . rawurlencode($fallbackVersion);
+        }
+
+        return 'v=' . (string)@filemtime(__FILE__);
+    }
+
+    $cacheKey = $path;
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
+
+    $normalized = ltrim(str_replace('\\', '/', $path), '/');
+    $projectRoot = realpath(__DIR__ . '/..');
+    $resolvedPath = $projectRoot ? ($projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalized)) : null;
+
+    if ($resolvedPath && is_file($resolvedPath)) {
+        $cache[$cacheKey] = 'v=' . (string)filemtime($resolvedPath);
+        return $cache[$cacheKey];
+    }
+
+    $fallbackVersion = isset($_ENV['APP_VERSION']) ? trim((string)$_ENV['APP_VERSION']) : '';
+    if ($fallbackVersion !== '') {
+        $cache[$cacheKey] = 'v=' . rawurlencode($fallbackVersion);
+        return $cache[$cacheKey];
+    }
+
+    $cache[$cacheKey] = 'v=1';
+    return $cache[$cacheKey];
 }
 
 // Translate status codes to human-readable labels (supports Indonesian mapping)

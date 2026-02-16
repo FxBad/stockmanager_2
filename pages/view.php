@@ -189,7 +189,7 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
     <meta http-equiv="Expires" content="0">
 
     <title>Lihat Stok - StockManager</title>
-    <link rel="stylesheet" href="style.css?<?php echo getVersion(); ?>">
+    <link rel="stylesheet" href="style.css?<?php echo getVersion('style.css'); ?>">
     <link href="https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css" rel="stylesheet">
 </head>
 
@@ -437,7 +437,7 @@ $hasActiveFilter = ($search !== '' || $category !== '' || $status !== '');
             </div>
         </div>
     </main>
-    <script src="script.js?<?php echo getVersion(); ?>"></script>
+    <script src="script.js?<?php echo getVersion('script.js'); ?>"></script>
 </body>
 
 </html>

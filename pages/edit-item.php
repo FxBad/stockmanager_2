@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ubah Barang - StockManager</title>
-    <link rel="stylesheet" href="style.css?<?php echo getVersion(); ?>">
+    <link rel="stylesheet" href="style.css?<?php echo getVersion('style.css'); ?>">
     <link href="https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css" rel="stylesheet">
 </head>
 
@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
-    <script src="script.js?<?php echo getVersion(); ?>"></script>
+    <script src="script.js?<?php echo getVersion('script.js'); ?>"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const hasLevelCb = document.getElementById('has_level');

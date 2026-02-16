@@ -369,7 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Perbarui Stok - StockManager</title>
-    <link rel="stylesheet" href="style.css?<?php echo getVersion(); ?>">
+    <link rel="stylesheet" href="style.css?<?php echo getVersion('style.css'); ?>">
     <link href="https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css" rel="stylesheet">
 </head>
 
@@ -480,7 +480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 
-    <script src="script.js?<?php echo getVersion(); ?>"></script>
+    <script src="script.js?<?php echo getVersion('script.js'); ?>"></script>
 </body>
 
 </html>

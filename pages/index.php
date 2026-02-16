@@ -70,7 +70,7 @@ try {
 
     <title>StockManager</title>
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?<?php echo getVersion(); ?>" />
+    <link rel="stylesheet" href="style.css?<?php echo getVersion('style.css'); ?>" />
     <!-- Boxicons CSS -->
     <link
         href="https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css"
@@ -196,7 +196,7 @@ try {
     </main>
 
     <!-- JavaScript -->
-    <script src="script.js?<?php echo getVersion(); ?>"></script>
+    <script src="script.js?<?php echo getVersion('script.js'); ?>"></script>
     <script src="transition.js"></script>
 </body>
 
